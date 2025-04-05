@@ -6,14 +6,13 @@ export default function ExerciseTracker({ challengeId }) {
   const [loading, setLoading] = useState(true);
   const [userChallenges, setUserChallenges] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  const [todayLogs, setTodayLogs] = useState({});
+  const [exerciseLogs, setExerciseLogs] = useState({});
   const [error, setError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState({});
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [minDates, setMinDates] = useState({});
   
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0];
-  
-  // Fetch user's challenges and today's logs
+  // Fetch user's challenges and logs for the selected date
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -49,20 +48,23 @@ export default function ExerciseTracker({ challengeId }) {
           
           if (participant) {
             setUserChallenges([challenge]);
+            setMinDates({[challenge.id]: challenge.start_date});
             
-            // Get today's log for this challenge
+            // Get log for selected date for this challenge
             const { data: logData, error: logError } = await supabase
               .from('exercise_logs')
               .select('*')
               .eq('user_id', user.id)
               .eq('challenge_id', challengeId)
-              .eq('log_date', today)
+              .eq('log_date', selectedDate)
               .single();
               
             if (logError && logError.code !== 'PGRST116') throw logError;
             
             if (logData) {
-              setTodayLogs({ [challengeId]: logData.exercise_count });
+              setExerciseLogs({ [challengeId]: logData.exercise_count });
+            } else {
+              setExerciseLogs({ [challengeId]: 0 });
             }
           } else {
             // User is not a participant in this challenge
@@ -90,7 +92,14 @@ export default function ExerciseTracker({ challengeId }) {
             
           setUserChallenges(activeChallenges);
           
-          // Get today's logs for active challenges
+          // Set min dates for each challenge
+          const minDatesObj = {};
+          activeChallenges.forEach(challenge => {
+            minDatesObj[challenge.id] = challenge.start_date;
+          });
+          setMinDates(minDatesObj);
+          
+          // Get logs for selected date for active challenges
           if (activeChallenges.length > 0) {
             const challengeIds = activeChallenges.map(c => c.id);
             
@@ -98,18 +107,24 @@ export default function ExerciseTracker({ challengeId }) {
               .from('exercise_logs')
               .select('*')
               .eq('user_id', user.id)
-              .eq('log_date', today)
+              .eq('log_date', selectedDate)
               .in('challenge_id', challengeIds);
               
             if (logError) throw logError;
             
             // Convert logs array to object with challenge_id as key
             const logsObj = {};
+            // Initialize with 0 counts for all challenges
+            challengeIds.forEach(id => {
+              logsObj[id] = 0;
+            });
+            
+            // Then update with actual log data where available
             logData?.forEach(log => {
               logsObj[log.challenge_id] = log.exercise_count;
             });
             
-            setTodayLogs(logsObj);
+            setExerciseLogs(logsObj);
           }
         }
       } catch (err) {
@@ -121,37 +136,20 @@ export default function ExerciseTracker({ challengeId }) {
     };
     
     fetchData();
-    
-    // Set up a subscription to real-time changes in exercise_logs
-    const logsSubscription = supabase
-      .channel('public:exercise_logs')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'exercise_logs'
-        }, 
-        payload => {
-          if (payload.new.log_date === today) {
-            setTodayLogs(prev => ({
-              ...prev,
-              [payload.new.challenge_id]: payload.new.exercise_count
-            }));
-          }
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(logsSubscription);
-    };
-  }, [challengeId, today]);
+  }, [challengeId, selectedDate]);
   
   const handleCountChange = (challengeId, count) => {
-    setTodayLogs(prev => ({
+    setExerciseLogs(prev => ({
       ...prev,
       [challengeId]: parseInt(count) || 0
     }));
+  };
+  
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    
+    // Reset save success messages when date changes
+    setSaveSuccess({});
   };
   
   const saveLog = async (challengeId) => {
@@ -161,15 +159,15 @@ export default function ExerciseTracker({ challengeId }) {
       
       if (!currentUser) return;
       
-      const count = todayLogs[challengeId] || 0;
+      const count = exerciseLogs[challengeId] || 0;
       
-      // Check if log already exists for today
+      // Check if log already exists for selected date
       const { data: existingLog, error: checkError } = await supabase
         .from('exercise_logs')
         .select('id')
         .eq('user_id', currentUser.id)
         .eq('challenge_id', challengeId)
-        .eq('log_date', today)
+        .eq('log_date', selectedDate)
         .maybeSingle();
         
       if (checkError) throw checkError;
@@ -193,7 +191,7 @@ export default function ExerciseTracker({ challengeId }) {
               user_id: currentUser.id,
               challenge_id: challengeId,
               exercise_count: count,
-              log_date: today
+              log_date: selectedDate
             }
           ]);
           
@@ -212,6 +210,23 @@ export default function ExerciseTracker({ challengeId }) {
       setError(err.message);
     }
   };
+
+  // Format date for display
+  const formatDateForDisplay = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+  
+  // Check if selected date is today
+  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+  
+  // Check if selected date is in the future
+  const isFuture = selectedDate > new Date().toISOString().split('T')[0];
   
   if (loading) return (
     <div className="loading-container">
@@ -239,14 +254,31 @@ export default function ExerciseTracker({ challengeId }) {
   
   return (
     <div className="exercise-tracker">
+      <div className="date-selector">
+        <div className="date-label">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span>Select date:</span>
+        </div>
+        <input 
+          type="date" 
+          value={selectedDate}
+          onChange={(e) => handleDateChange(e.target.value)}
+          max={new Date().toISOString().split('T')[0]}
+          className="date-input"
+        />
+      </div>
+      
       <div className="date-display">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        <span>Today: <strong>{new Date().toLocaleDateString()}</strong></span>
+        {isToday ? (
+          <div className="today-indicator">Today</div>
+        ) : (
+          <div className="date-indicator">{formatDateForDisplay(selectedDate)}</div>
+        )}
       </div>
       
       {error && (
@@ -261,93 +293,121 @@ export default function ExerciseTracker({ challengeId }) {
       )}
       
       <div className="challenge-cards">
-        {userChallenges.map(challenge => (
-          <div key={challenge.id} className="challenge-card">
-            <div className="card-header">
-              <div className="challenge-type">{challenge.exercise_type}</div>
-              <h3>{challenge.title}</h3>
-            </div>
-            
-            <div className="card-body">
-              <div className="log-form">
-                <div className="log-label">Today's count:</div>
-                <div className="counter">
-                  <button 
-                    onClick={() => handleCountChange(
-                      challenge.id, 
-                      Math.max(0, (todayLogs[challenge.id] || 0) - 1)
-                    )}
-                    className="counter-btn"
-                    aria-label="Decrease count"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  </button>
-                  
-                  <input
-                    type="number"
-                    min="0"
-                    value={todayLogs[challenge.id] || 0}
-                    onChange={(e) => handleCountChange(challenge.id, e.target.value)}
-                    className="counter-input"
-                  />
-                  
-                  <button 
-                    onClick={() => handleCountChange(
-                      challenge.id, 
-                      (todayLogs[challenge.id] || 0) + 1
-                    )}
-                    className="counter-btn"
-                    aria-label="Increase count"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  </button>
-                </div>
+        {userChallenges.map(challenge => {
+          const isPastChallengeStart = selectedDate >= minDates[challenge.id];
+          
+          return (
+            <div key={challenge.id} className={`challenge-card ${!isPastChallengeStart ? 'disabled' : ''}`}>
+              <div className="card-header">
+                <div className="challenge-type">{challenge.exercise_type}</div>
+                <h3>{challenge.title}</h3>
               </div>
               
-              {challenge.goal_type === 'daily_count' && (
-                <div className="goal-progress">
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill"
-                      style={{ 
-                        width: `${Math.min(100, ((todayLogs[challenge.id] || 0) / challenge.goal_value) * 100)}%` 
-                      }}
-                    ></div>
+              <div className="card-body">
+                {!isPastChallengeStart ? (
+                  <div className="date-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p>Selected date is before the challenge start date ({new Date(minDates[challenge.id]).toLocaleDateString()})</p>
                   </div>
-                  <div className="progress-text">
-                    <span className="current">{todayLogs[challenge.id] || 0}</span>
-                    <span className="separator">/</span>
-                    <span className="goal">{challenge.goal_value}</span>
+                ) : isFuture ? (
+                  <div className="date-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p>Cannot log exercises for future dates</p>
                   </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="card-footer">
-              <button 
-                onClick={() => saveLog(challenge.id)}
-                className="btn btn-primary btn-sm"
-              >
-                Save Progress
-              </button>
+                ) : (
+                  <>
+                    <div className="log-form">
+                      <div className="log-label">Exercise count:</div>
+                      <div className="counter">
+                        <button 
+                          onClick={() => handleCountChange(
+                            challenge.id, 
+                            Math.max(0, (exerciseLogs[challenge.id] || 0) - 1)
+                          )}
+                          className="counter-btn"
+                          aria-label="Decrease count"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                          </svg>
+                        </button>
+                        
+                        <input
+                          type="number"
+                          min="0"
+                          value={exerciseLogs[challenge.id] || 0}
+                          onChange={(e) => handleCountChange(challenge.id, e.target.value)}
+                          className="counter-input"
+                        />
+                        
+                        <button 
+                          onClick={() => handleCountChange(
+                            challenge.id, 
+                            (exerciseLogs[challenge.id] || 0) + 1
+                          )}
+                          className="counter-btn"
+                          aria-label="Increase count"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {challenge.goal_type === 'daily_count' && (
+                      <div className="goal-progress">
+                        <div className="progress-bar">
+                          <div 
+                            className="progress-fill"
+                            style={{ 
+                              width: `${Math.min(100, ((exerciseLogs[challenge.id] || 0) / challenge.goal_value) * 100)}%` 
+                            }}
+                          ></div>
+                        </div>
+                        <div className="progress-text">
+                          <span className="current">{exerciseLogs[challenge.id] || 0}</span>
+                          <span className="separator">/</span>
+                          <span className="goal">{challenge.goal_value}</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
               
-              {saveSuccess[challenge.id] && (
-                <div className="save-success">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                  </svg>
-                  <span>Saved!</span>
-                </div>
-              )}
+              <div className="card-footer">
+                {isPastChallengeStart && !isFuture && (
+                  <button 
+                    onClick={() => saveLog(challenge.id)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    Save Progress
+                  </button>
+                )}
+                
+                {saveSuccess[challenge.id] && (
+                  <div className="save-success">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <span>Saved!</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       <style jsx>{`
@@ -355,16 +415,54 @@ export default function ExerciseTracker({ challengeId }) {
           margin-top: var(--spacing-md);
         }
         
-        .date-display {
+        .date-selector {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: var(--spacing-md);
+          background-color: var(--color-white);
+          padding: var(--spacing-md);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-sm);
+        }
+        
+        .date-label {
           display: flex;
           align-items: center;
           gap: var(--spacing-sm);
-          margin-bottom: var(--spacing-md);
-          color: var(--color-text-light);
-          font-size: 0.9rem;
+          color: var(--color-text);
+          font-weight: 500;
         }
         
-        .date-display strong {
+        .date-input {
+          padding: var(--spacing-sm) var(--spacing-md);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+          font-family: inherit;
+          color: var(--color-text);
+        }
+        
+        .date-display {
+          display: flex;
+          justify-content: center;
+          margin-bottom: var(--spacing-md);
+        }
+        
+        .today-indicator, .date-indicator {
+          display: inline-block;
+          padding: var(--spacing-xs) var(--spacing-md);
+          border-radius: var(--radius-md);
+          font-weight: 500;
+          font-size: 0.95rem;
+        }
+        
+        .today-indicator {
+          background-color: rgba(79, 70, 229, 0.1);
+          color: var(--color-primary);
+        }
+        
+        .date-indicator {
+          background-color: var(--color-background);
           color: var(--color-text);
         }
         
@@ -422,6 +520,10 @@ export default function ExerciseTracker({ challengeId }) {
           overflow: hidden;
         }
         
+        .challenge-card.disabled {
+          opacity: 0.7;
+        }
+        
         .card-header {
           padding: var(--spacing-md);
           border-bottom: 1px solid var(--color-border);
@@ -445,6 +547,21 @@ export default function ExerciseTracker({ challengeId }) {
         
         .card-body {
           padding: var(--spacing-md);
+        }
+        
+        .date-warning {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
+          padding: var(--spacing-md);
+          background-color: var(--color-background);
+          border-radius: var(--radius-md);
+          color: var(--color-text-light);
+          font-size: 0.875rem;
+        }
+        
+        .date-warning p {
+          margin: 0;
         }
         
         .card-footer {
@@ -570,6 +687,18 @@ export default function ExerciseTracker({ challengeId }) {
           align-items: center;
           gap: var(--spacing-sm);
           margin-bottom: var(--spacing-md);
+        }
+        
+        @media (max-width: 640px) {
+          .date-selector {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+          }
+          
+          .date-input {
+            width: 100%;
+          }
         }
       `}</style>
     </div>
