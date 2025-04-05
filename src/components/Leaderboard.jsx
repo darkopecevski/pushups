@@ -66,8 +66,8 @@ export default function Leaderboard({ challengeId }) {
           if (!userTotals[userId]) {
             userTotals[userId] = {
               userId,
-              username: log.profiles.username || 'Anonymous User',
-              avatarUrl: log.profiles.avatar_url,
+              username: log.profiles?.username || 'Anonymous User',
+              avatarUrl: log.profiles?.avatar_url,
               totalCount: 0
             };
           }
@@ -92,64 +92,95 @@ export default function Leaderboard({ challengeId }) {
     fetchLeaderboard();
   }, [challengeId, timeFrame]);
   
-  if (loading) return <div>Loading leaderboard...</div>;
-  if (error) return <div className="error">Error loading leaderboard: {error}</div>;
+  const renderAvatarOrInitial = (user) => {
+    if (user.avatarUrl) {
+      return (
+        <img 
+          src={user.avatarUrl} 
+          alt={user.username} 
+          className="user-avatar"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random`;
+          }}
+        />
+      );
+    } else {
+      return (
+        <div className="avatar-placeholder">
+          {user.username.charAt(0).toUpperCase()}
+        </div>
+      );
+    }
+  };
   
   return (
     <div className="leaderboard">
       <div className="leaderboard-header">
-        <h3>Leaderboard</h3>
-        
         <div className="time-filter">
           <button 
             onClick={() => setTimeFrame('today')}
-            className={timeFrame === 'today' ? 'active' : ''}
+            className={`filter-btn ${timeFrame === 'today' ? 'active' : ''}`}
           >
             Today
           </button>
           <button 
             onClick={() => setTimeFrame('week')}
-            className={timeFrame === 'week' ? 'active' : ''}
+            className={`filter-btn ${timeFrame === 'week' ? 'active' : ''}`}
           >
             This Week
           </button>
           <button 
             onClick={() => setTimeFrame('month')}
-            className={timeFrame === 'month' ? 'active' : ''}
+            className={`filter-btn ${timeFrame === 'month' ? 'active' : ''}`}
           >
             This Month
           </button>
           <button 
             onClick={() => setTimeFrame('all')}
-            className={timeFrame === 'all' ? 'active' : ''}
+            className={`filter-btn ${timeFrame === 'all' ? 'active' : ''}`}
           >
             All Time
           </button>
         </div>
       </div>
       
-      {leaderboardData.length === 0 ? (
-        <div className="no-data">
-          No exercise data available for this time period.
+      {loading ? (
+        <div className="loading-state">
+          <div className="loader"></div>
+          <p>Loading leaderboard data...</p>
+        </div>
+      ) : error ? (
+        <div className="error-state">
+          <p>Error loading leaderboard: {error}</p>
+        </div>
+      ) : leaderboardData.length === 0 ? (
+        <div className="empty-state">
+          <p>No exercise data available for this time period.</p>
         </div>
       ) : (
-        <div className="leaderboard-list">
+        <div className="leaderboard-table">
           {leaderboardData.map((user, index) => (
-            <div key={user.userId} className="leaderboard-item">
-              <div className="rank">{index + 1}</div>
-              
-              <div className="user-info">
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.username} className="avatar" />
+            <div 
+              key={user.userId} 
+              className={`leaderboard-row ${index < 3 ? `top-${index+1}` : ''}`}
+            >
+              <div className="rank-column">
+                {index < 3 ? (
+                  <div className={`medal rank-${index+1}`}>{index + 1}</div>
                 ) : (
-                  <div className="avatar-placeholder">
-                    {user.username.charAt(0).toUpperCase()}
-                  </div>
+                  <div className="rank">{index + 1}</div>
                 )}
+              </div>
+              
+              <div className="user-column">
+                {renderAvatarOrInitial(user)}
                 <span className="username">{user.username}</span>
               </div>
               
-              <div className="count">{user.totalCount}</div>
+              <div className="count-column">
+                <span className="count">{user.totalCount}</span>
+              </div>
             </div>
           ))}
         </div>
@@ -157,95 +188,193 @@ export default function Leaderboard({ challengeId }) {
       
       <style jsx>{`
         .leaderboard {
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
+          background-color: var(--color-white);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-sm);
           overflow: hidden;
         }
         
         .leaderboard-header {
-          padding: 1rem;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .leaderboard-header h3 {
-          margin-top: 0;
-          margin-bottom: 1rem;
+          padding: var(--spacing-md);
+          border-bottom: 1px solid var(--color-border);
         }
         
         .time-filter {
           display: flex;
-          gap: 0.5rem;
+          gap: var(--spacing-xs);
           flex-wrap: wrap;
         }
         
-        .time-filter button {
+        .filter-btn {
           background: none;
-          border: 1px solid #e5e7eb;
-          padding: 0.25rem 0.5rem;
-          border-radius: 4px;
+          border: 1px solid var(--color-border);
+          padding: var(--spacing-xs) var(--spacing-md);
+          border-radius: var(--radius-md);
           font-size: 0.75rem;
           cursor: pointer;
+          color: var(--color-text);
+          transition: all 0.2s;
         }
         
-        .time-filter button.active {
-          background-color: #4f46e5;
+        .filter-btn:hover {
+          background-color: var(--color-background);
+        }
+        
+        .filter-btn.active {
+          background-color: var(--color-primary);
           color: white;
-          border-color: #4f46e5;
+          border-color: var(--color-primary);
         }
         
-        .no-data {
-          padding: 2rem;
+        .loading-state, .error-state, .empty-state {
+          padding: var(--spacing-xl);
           text-align: center;
-          color: #6b7280;
+          color: var(--color-text-light);
         }
         
-        .leaderboard-item {
+        .loader {
+          border: 3px solid var(--color-border);
+          border-radius: 50%;
+          border-top: 3px solid var(--color-primary);
+          width: 24px;
+          height: 24px;
+          animation: spin 1s linear infinite;
+          margin: 0 auto var(--spacing-md);
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        .error-state {
+          color: var(--color-error);
+        }
+        
+        .leaderboard-table {
+          padding: var(--spacing-sm) 0;
+        }
+        
+        .leaderboard-row {
           display: flex;
           align-items: center;
-          padding: 0.75rem 1rem;
-          border-bottom: 1px solid #f3f4f6;
+          padding: var(--spacing-sm) var(--spacing-md);
+          transition: background-color 0.2s;
         }
         
-        .leaderboard-item:last-child {
-          border-bottom: none;
+        .leaderboard-row:hover {
+          background-color: var(--color-background);
+        }
+        
+        .top-1 {
+          background-color: rgba(255, 215, 0, 0.05);
+        }
+        
+        .top-2 {
+          background-color: rgba(192, 192, 192, 0.05);
+        }
+        
+        .top-3 {
+          background-color: rgba(205, 127, 50, 0.05);
+        }
+        
+        .rank-column {
+          width: 40px;
+          flex-shrink: 0;
+          text-align: center;
         }
         
         .rank {
-          font-weight: bold;
-          width: 2rem;
-          text-align: center;
+          font-weight: 600;
+          color: var(--color-text-light);
+          font-size: 0.9rem;
         }
         
-        .user-info {
+        .medal {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
           display: flex;
           align-items: center;
-          flex: 1;
-          gap: 0.75rem;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 0.9rem;
+          color: var(--color-white);
+          margin: 0 auto;
         }
         
-        .avatar, .avatar-placeholder {
-          width: 2rem;
-          height: 2rem;
+        .rank-1 {
+          background-color: #FFD700; /* Gold */
+        }
+        
+        .rank-2 {
+          background-color: #C0C0C0; /* Silver */
+        }
+        
+        .rank-3 {
+          background-color: #CD7F32; /* Bronze */
+        }
+        
+        .user-column {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
+          flex: 1;
+          min-width: 0;
+        }
+        
+        .user-avatar, .avatar-placeholder {
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
+          flex-shrink: 0;
+        }
+        
+        .user-avatar {
           object-fit: cover;
         }
         
         .avatar-placeholder {
-          background-color: #e5e7eb;
-          color: #6b7280;
+          background-color: var(--color-primary);
+          color: white;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-weight: bold;
+          font-weight: 600;
+          font-size: 0.9rem;
         }
         
         .username {
           font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
+        .count-column {
+          width: 80px;
+          flex-shrink: 0;
+          text-align: right;
         }
         
         .count {
-          font-weight: bold;
-          color: #4f46e5;
+          font-weight: 700;
+          color: var(--color-primary);
+        }
+        
+        @media (max-width: 480px) {
+          .time-filter {
+            justify-content: space-between;
+          }
+          
+          .filter-btn {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: 0.7rem;
+          }
+          
+          .username {
+            font-size: 0.9rem;
+          }
         }
       `}</style>
     </div>

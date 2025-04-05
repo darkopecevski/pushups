@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function WeeklyStreak() {
+export default function WeeklyStreak({ userId }) {
   const [loading, setLoading] = useState(true);
   const [weekData, setWeekData] = useState([]);
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -14,9 +14,16 @@ export default function WeeklyStreak() {
         setLoading(true);
         setError(null);
         
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        // Get current user if userId is not provided
+        let currentUserId = userId;
+        if (!currentUserId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            setLoading(false);
+            return;
+          }
+          currentUserId = user.id;
+        }
         
         // Get last 7 days dates
         const dates = [];
@@ -30,7 +37,7 @@ export default function WeeklyStreak() {
         const { data: logData, error: logError } = await supabase
           .from('exercise_logs')
           .select('log_date, exercise_count')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUserId)
           .in('log_date', dates);
           
         if (logError) throw logError;
@@ -71,29 +78,55 @@ export default function WeeklyStreak() {
     };
     
     fetchWeeklyData();
-  }, []);
+  }, [userId]);
   
-  if (loading) return <div className="loading">Loading your streak data...</div>;
+  const renderStreakMessage = () => {
+    if (currentStreak === 0) {
+      return "Start your streak today by logging your first exercise";
+    } else if (currentStreak === 1) {
+      return "You've logged today! Keep going tomorrow";
+    } else if (currentStreak === 7) {
+      return "🔥 Perfect week! You've exercised every day";
+    } else {
+      return `${currentStreak} day streak - Keep it going!`;
+    }
+  };
   
-  if (error) return <div className="error">Error: {error}</div>;
+  if (loading) {
+    return (
+      <div className="streak-loading">
+        <div className="loader"></div>
+        <p>Loading your activity...</p>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="streak-error">
+        <p>Error loading activity data</p>
+      </div>
+    );
+  }
   
   return (
     <div className="weekly-streak">
       <div className="streak-header">
-        <h3>Your Weekly Activity</h3>
-        <div className="current-streak">
-          <span className="streak-count">{currentStreak}</span>
-          <span className="streak-label">day{currentStreak !== 1 ? 's' : ''} streak</span>
+        <div className="streak-title">
+          <h3>Weekly Activity</h3>
+          <p>{renderStreakMessage()}</p>
+        </div>
+        
+        <div className="streak-badge">
+          <div className="streak-count">{currentStreak}</div>
+          <div className="streak-label">day streak</div>
         </div>
       </div>
       
-      <div className="day-circles">
-        {weekData.map((day, index) => (
+      <div className="day-grid">
+        {weekData.map((day) => (
           <div key={day.date} className="day-item">
-            <div 
-              className={`day-circle ${day.hasActivity ? 'active' : 'inactive'}`}
-              title={`${day.count} exercises on ${new Date(day.date).toLocaleDateString()}`}
-            >
+            <div className={`day-circle ${day.hasActivity ? 'active' : ''}`}>
               {day.hasActivity && day.count}
             </div>
             <div className="day-label">{day.day}</div>
@@ -101,160 +134,151 @@ export default function WeeklyStreak() {
         ))}
       </div>
       
-      <div className="streak-footer">
-        <div className="legend">
-          <div className="legend-item">
-            <div className="legend-circle inactive"></div>
-            <span>No activity</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-circle active"></div>
-            <span>Active day</span>
-          </div>
-        </div>
-        
-        {currentStreak > 0 ? (
-          <p className="streak-message">
-            {currentStreak === 7 ? (
-              <span>Perfect week! You've exercised every day! 🎉</span>
-            ) : (
-              <span>Keep going! Don't break your streak!</span>
-            )}
-          </p>
-        ) : (
-          <p className="streak-message">Log your first exercise today to start your streak!</p>
-        )}
-      </div>
-      
       <style jsx>{`
         .weekly-streak {
-          padding: 1rem;
+          background-color: var(--color-white);
+          border-radius: var(--radius-md);
+          padding: var(--spacing-lg);
+          box-shadow: var(--shadow-sm);
         }
         
         .streak-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 1.5rem;
+          margin-bottom: var(--spacing-md);
         }
         
-        .streak-header h3 {
+        .streak-title h3 {
+          margin: 0 0 var(--spacing-xs) 0;
+          font-size: 1.1rem;
+        }
+        
+        .streak-title p {
           margin: 0;
+          color: var(--color-text-light);
+          font-size: 0.875rem;
         }
         
-        .current-streak {
+        .streak-badge {
           display: flex;
           flex-direction: column;
-          align-items: flex-end;
+          align-items: center;
+          justify-content: center;
+          min-width: 70px;
+          background-color: var(--color-background);
+          padding: var(--spacing-sm) var(--spacing-md);
+          border-radius: var(--radius-md);
         }
         
         .streak-count {
-          font-size: 1.5rem;
+          font-size: 1.75rem;
           font-weight: 700;
-          color: #4f46e5;
+          line-height: 1;
+          color: var(--color-primary);
         }
         
         .streak-label {
           font-size: 0.75rem;
-          color: #6b7280;
+          color: var(--color-text-light);
         }
         
-        .day-circles {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 1.5rem;
+        .day-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: var(--spacing-xs);
         }
         
         .day-item {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.5rem;
         }
         
         .day-circle {
-          width: 40px;
-          height: 40px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
+          font-size: 0.75rem;
           font-weight: 600;
-          font-size: 0.875rem;
+          margin-bottom: var(--spacing-xs);
+          background-color: var(--color-background);
+          color: var(--color-text-light);
+          transition: all 0.2s ease;
         }
         
         .day-circle.active {
-          background-color: #4f46e5;
+          background-color: var(--color-primary);
           color: white;
-        }
-        
-        .day-circle.inactive {
-          background-color: #f3f4f6;
-          color: #9ca3af;
+          transform: scale(1.05);
         }
         
         .day-label {
           font-size: 0.75rem;
-          color: #6b7280;
+          color: var(--color-text-light);
         }
         
-        .streak-footer {
-          margin-top: 1rem;
-        }
-        
-        .legend {
+        .streak-loading, .streak-error {
           display: flex;
-          gap: 1rem;
-          margin-bottom: 0.75rem;
-        }
-        
-        .legend-item {
-          display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 0.5rem;
-          font-size: 0.75rem;
-          color: #6b7280;
+          justify-content: center;
+          padding: var(--spacing-md);
+          min-height: 150px;
+          color: var(--color-text-light);
+          background-color: var(--color-white);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-sm);
         }
         
-        .legend-circle {
-          width: 12px;
-          height: 12px;
+        .loader {
+          border: 3px solid var(--color-border);
           border-radius: 50%;
+          border-top: 3px solid var(--color-primary);
+          width: 24px;
+          height: 24px;
+          animation: spin 1s linear infinite;
+          margin-bottom: var(--spacing-md);
         }
         
-        .legend-circle.active {
-          background-color: #4f46e5;
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
         
-        .legend-circle.inactive {
-          background-color: #f3f4f6;
-        }
-        
-        .streak-message {
-          font-size: 0.875rem;
-          color: #4b5563;
-          margin: 0;
-        }
-        
-        .loading, .error {
-          padding: 1rem;
-          text-align: center;
-          color: #6b7280;
-        }
-        
-        .error {
-          color: #ef4444;
-        }
-        
-        @media (max-width: 500px) {
+        @media (max-width: 480px) {
           .day-circle {
-            width: 32px;
-            height: 32px;
-            font-size: 0.75rem;
+            width: 28px;
+            height: 28px;
+            font-size: 0.7rem;
           }
           
           .day-label {
             font-size: 0.7rem;
+          }
+          
+          .streak-count {
+            font-size: 1.5rem;
+          }
+          
+          .streak-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+          }
+          
+          .streak-badge {
+            width: 100%;
+            flex-direction: row;
+            justify-content: center;
+            gap: var(--spacing-sm);
+          }
+          
+          .streak-badge .streak-label {
+            margin-top: 0;
           }
         }
       `}</style>

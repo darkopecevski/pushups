@@ -8,104 +8,101 @@ export default function WelcomeBanner({ username }) {
   
   return (
     <div className="welcome-banner">
-      <div className="banner-content">
-        <div className="banner-icon">💪</div>
-        <div className="banner-text">
-          <h3>Welcome to Pushups Challenge, {username || 'Fitness Enthusiast'}!</h3>
-          <p>Track your exercises, join challenges, and compete with friends to stay motivated on your fitness journey.</p>
+      <div className="welcome-content">
+        <div className="welcome-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18.9 8.4l-8.4 8.4-4.4-4.4" />
+            <circle cx="12" cy="12" r="10" />
+          </svg>
         </div>
+        <div className="welcome-text">
+          <h3>Welcome to FitChallenge, {username || 'Fitness Enthusiast'}!</h3>
+          <p>Track your exercises, join challenges, and compete with friends to stay motivated.</p>
+        </div>
+        <button onClick={() => setDismissed(true)} className="welcome-close-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       
-      <div className="banner-actions">
-        <a href="/challenges" className="action-btn primary">Find a Challenge</a>
-        <button onClick={() => setDismissed(true)} className="action-btn secondary">
-          Dismiss
-        </button>
+      <div className="welcome-actions">
+        <a href="/challenges" className="btn btn-primary">Find a Challenge</a>
+        <a href="/profile" className="btn btn-outline">Complete Profile</a>
       </div>
       
       <style jsx>{`
         .welcome-banner {
-          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-          color: white;
-          border-radius: 12px;
-          padding: 1.5rem;
-          margin-bottom: 2rem;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+          background-color: var(--color-white);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-md);
+          padding: var(--spacing-lg);
+          margin-bottom: var(--spacing-xl);
+          overflow: hidden;
+          position: relative;
         }
         
-        .banner-content {
+        .welcome-content {
           display: flex;
-          align-items: center;
-          gap: 1.5rem;
-          margin-bottom: 1.5rem;
+          align-items: flex-start;
+          gap: var(--spacing-md);
+          margin-bottom: var(--spacing-lg);
         }
         
-        .banner-icon {
-          font-size: 3rem;
-          background-color: rgba(255, 255, 255, 0.2);
-          width: 80px;
-          height: 80px;
-          border-radius: 50%;
+        .welcome-icon {
           display: flex;
           align-items: center;
           justify-content: center;
+          background-color: var(--color-primary);
+          color: white;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
           flex-shrink: 0;
         }
         
-        .banner-text h3 {
-          margin: 0 0 0.5rem 0;
-          font-size: 1.25rem;
-          color: white;
+        .welcome-text {
+          flex: 1;
         }
         
-        .banner-text p {
+        .welcome-text h3 {
+          margin: 0 0 var(--spacing-sm) 0;
+          font-size: 1.1rem;
+        }
+        
+        .welcome-text p {
           margin: 0;
-          opacity: 0.9;
-          font-size: 0.95rem;
-          line-height: 1.5;
+          color: var(--color-text-light);
+          font-size: 0.9rem;
         }
         
-        .banner-actions {
-          display: flex;
-          gap: 1rem;
-        }
-        
-        .action-btn {
-          padding: 0.75rem 1.5rem;
-          border-radius: 6px;
-          font-weight: 500;
+        .welcome-close-btn {
+          background: transparent;
+          border: none;
+          color: var(--color-text-light);
+          padding: 0;
           cursor: pointer;
-          text-align: center;
-          transition: all 0.2s;
+          transition: color 0.2s;
         }
         
-        .action-btn.primary {
-          background-color: white;
-          color: #4f46e5;
-          text-decoration: none;
+        .welcome-close-btn:hover {
+          color: var(--color-text);
         }
         
-        .action-btn.primary:hover {
-          background-color: rgba(255, 255, 255, 0.9);
-        }
-        
-        .action-btn.secondary {
-          background-color: transparent;
-          border: 1px solid rgba(255, 255, 255, 0.5);
-          color: white;
-        }
-        
-        .action-btn.secondary:hover {
-          background-color: rgba(255, 255, 255, 0.1);
+        .welcome-actions {
+          display: flex;
+          gap: var(--spacing-md);
         }
         
         @media (max-width: 640px) {
-          .banner-content {
+          .welcome-actions {
             flex-direction: column;
-            text-align: center;
           }
           
-          .banner-actions {
+          .welcome-content {
+            align-items: center;
+            text-align: center;
             flex-direction: column;
           }
         }

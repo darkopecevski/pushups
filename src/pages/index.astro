@@ -1,10 +1,10 @@
 ---
 // src/pages/index.astro
 import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
 import ExerciseTracker from '../components/ExerciseTracker';
-import WeeklyStreak from '../components/WeeklyStreak';
 import WelcomeBanner from '../components/WelcomeBanner';
-import GettingStartedGuide from '../components/GettingStartedGuide';
+import WeeklyStreak from '../components/WeeklyStreak';
 import { supabase } from '../lib/supabase';
 
 // Check if user is authenticated
@@ -81,93 +81,113 @@ if (user) {
 }
 ---
 
-<Layout title="Pushups App - Your Fitness Dashboard">
-  <header>
-    <div class="container">
-      <h1>Pushups Challenge</h1>
-      <nav>
-        <ul>
-          <li><a href="/" class="active">Home</a></li>
-          <li><a href="/challenges">Challenges</a></li>
-          <li><a href="/leaderboard">Leaderboard</a></li>
-          <li><a href="/profile">Profile</a></li>
-          <li>
-            <button id="logout">Logout</button>
-          </li>
-        </ul>
-      </nav>
-    </div>
-  </header>
+<Layout title="Dashboard - FitChallenge">
+  <Header activePage="home" />
 
   <main>
     <div class="container">
+      <section class="page-header">
+        <h1>Welcome, {profile?.username || 'Fitness Enthusiast'}</h1>
+        <p class="subtitle">Track your progress and join challenges to stay motivated</p>
+      </section>
+      
       {activeChallenges.length === 0 && (
         <WelcomeBanner client:load username={profile?.username} />
       )}
       
-      <div class="welcome-section">
-        <h2>Welcome, {profile?.username || 'Fitness Enthusiast'}!</h2>
-        <p>Track your progress and join new challenges to stay motivated.</p>
-      </div>
-      
-      <div class="dashboard-grid">
-        <div class="main-section">
-          {activeChallenges.length > 0 ? (
-            <div class="active-challenges">
-              <h3>Your Active Challenges</h3>
-              <p>Log your daily exercises to stay on track:</p>
-              
-              <ExerciseTracker client:load />
-              
-              <div class="weekly-activity">
-                <WeeklyStreak client:load />
-              </div>
-            </div>
-          ) : (
-            <div class="no-challenges">
-              <h3>No Active Challenges</h3>
-              <p>You haven't joined any active challenges yet. Browse available challenges and start your fitness journey today!</p>
-              <a href="/challenges" class="primary-btn">Find Challenges</a>
-              
-              <div class="getting-started-container">
-                <GettingStartedGuide client:load />
-              </div>
-            </div>
-          )}
+      <div class="dashboard-layout">
+        <div class="main-content">
+          <section class="section active-challenges">
+            <h2>Today's Exercises</h2>
+            
+            <ExerciseTracker client:load />
+          </section>
+          
+          <section class="section weekly-activity">
+            <h2>Activity Streak</h2>
+            
+            <WeeklyStreak client:load userId={user?.id} />
+          </section>
         </div>
         
         <div class="sidebar">
-          <div class="available-challenges">
-            <h3>Discover Challenges</h3>
+          <section class="section suggested-challenges">
+            <h2>Suggested Challenges</h2>
             
             {availableChallenges.length > 0 ? (
-              <div class="challenge-list">
+              <div class="challenge-suggestions">
                 {availableChallenges.map(challenge => (
-                  <div class="challenge-card">
-                    <h4>{challenge.title}</h4>
-                    <p class="challenge-dates">
-                      {new Date(challenge.start_date).toLocaleDateString()} - {new Date(challenge.end_date).toLocaleDateString()}
-                    </p>
-                    <p class="challenge-exercise">
-                      <strong>{challenge.goal_value}</strong> {challenge.exercise_type} ({challenge.goal_type.replace('_', ' ')})
-                    </p>
-                    <button class="join-btn" data-id={challenge.id}>Join Challenge</button>
+                  <div class="suggestion-card">
+                    <div class="suggestion-header">
+                      <span class="suggestion-type">{challenge.exercise_type}</span>
+                      <h3>{challenge.title}</h3>
+                    </div>
+                    
+                    <div class="suggestion-body">
+                      <div class="suggestion-meta">
+                        <div class="meta-item">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                          </svg>
+                          <span>
+                            {new Date(challenge.start_date).toLocaleDateString()} - 
+                            {new Date(challenge.end_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div class="meta-item">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                          </svg>
+                          <span>
+                            Goal: {challenge.goal_value} {challenge.goal_type.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <button class="btn btn-primary btn-sm join-challenge-btn" data-id={challenge.id}>
+                        Join Challenge
+                      </button>
+                    </div>
                   </div>
                 ))}
                 
-                <a href="/challenges" class="view-all">View All Challenges →</a>
+                <a href="/challenges" class="view-all-link">
+                  View all available challenges
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14"></path>
+                    <path d="M12 5l7 7-7 7"></path>
+                  </svg>
+                </a>
               </div>
             ) : (
-              <p>No new challenges available at the moment.</p>
+              <div class="empty-suggestions">
+                <p>No new challenges available at the moment.</p>
+                <a href="/challenges" class="btn btn-outline btn-sm">Browse All Challenges</a>
+              </div>
             )}
-          </div>
+          </section>
           
-          <div class="quick-stats">
-            <h3>Your Stats</h3>
-            <div class="stats-container" id="stats-container">
-              <p>Loading your stats...</p>
+          <section class="section quick-stats">
+            <h2>Your Stats</h2>
+            
+            <div id="stats-container" class="stats-grid">
+              <div class="stat-card skeleton">
+                <div class="stat-value skeleton-text"></div>
+                <div class="stat-label skeleton-text"></div>
+              </div>
+              <div class="stat-card skeleton">
+                <div class="stat-value skeleton-text"></div>
+                <div class="stat-label skeleton-text"></div>
+              </div>
+              <div class="stat-card skeleton">
+                <div class="stat-value skeleton-text"></div>
+                <div class="stat-label skeleton-text"></div>
+              </div>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>
@@ -177,16 +197,12 @@ if (user) {
 <script define:vars={{ userId: user?.id }}>
   import { supabase } from '../lib/supabase';
   
-  // Handle logout
-  document.getElementById('logout')?.addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/auth';
-  });
-  
   // Handle join challenge buttons
-  document.querySelectorAll('.join-btn').forEach(button => {
+  document.querySelectorAll('.join-challenge-btn').forEach(button => {
     button.addEventListener('click', async () => {
       const challengeId = button.getAttribute('data-id');
+      button.disabled = true;
+      button.textContent = 'Joining...';
       
       try {
         const { error } = await supabase
@@ -202,6 +218,8 @@ if (user) {
       } catch (err) {
         console.error('Error joining challenge:', err);
         alert('Error joining challenge: ' + err.message);
+        button.disabled = false;
+        button.textContent = 'Join Challenge';
       }
     });
   });
@@ -248,22 +266,22 @@ if (user) {
       
       // Update stats container
       statsContainer.innerHTML = `
-        <div class="stat-item">
-          <span class="stat-value">${totalExercises}</span>
-          <span class="stat-label">Total Exercises</span>
+        <div class="stat-card">
+          <div class="stat-value">${totalExercises}</div>
+          <div class="stat-label">Total Exercises</div>
         </div>
-        <div class="stat-item">
-          <span class="stat-value">${activeDaysLastWeek}</span>
-          <span class="stat-label">Active Days (Last 7)</span>
+        <div class="stat-card">
+          <div class="stat-value">${activeDaysLastWeek}</div>
+          <div class="stat-label">Active Days (Last 7)</div>
         </div>
-        <div class="stat-item">
-          <span class="stat-value">${challengeCount || 0}</span>
-          <span class="stat-label">Challenges Joined</span>
+        <div class="stat-card">
+          <div class="stat-value">${challengeCount || 0}</div>
+          <div class="stat-label">Challenges Joined</div>
         </div>
       `;
     } catch (err) {
       console.error('Error fetching stats:', err);
-      statsContainer.innerHTML = '<p>Failed to load stats. Please refresh the page.</p>';
+      statsContainer.innerHTML = '<div class="error-message">Failed to load stats. Please refresh the page.</div>';
     }
   };
   
@@ -272,207 +290,209 @@ if (user) {
 </script>
 
 <style>
-  header {
-    background-color: #4f46e5;
-    color: white;
-    padding: 1rem 0;
-  }
-  
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1rem;
-  }
-  
-  header .container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  nav ul {
-    display: flex;
-    gap: 1.5rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  
-  nav a {
-    color: white;
-    text-decoration: none;
-  }
-  
-  nav a.active {
-    font-weight: bold;
-    text-decoration: underline;
-  }
-  
-  nav a:hover {
-    text-decoration: underline;
-  }
-  
-  #logout {
-    background: none;
-    border: 1px solid white;
-    color: white;
-    padding: 0.25rem 0.75rem;
-    cursor: pointer;
-    font-size: 0.875rem;
-    border-radius: 4px;
-    width: auto;
-    margin-top: 0;
-  }
-  
-  #logout:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  
   main {
-    padding: 2rem 0;
+    padding: var(--spacing-xl) 0;
   }
   
-  .welcome-section {
-    margin-bottom: 2rem;
+  .page-header {
+    margin-bottom: var(--spacing-xl);
   }
   
-  .welcome-section h2 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
+  .page-header h1 {
+    margin-bottom: var(--spacing-xs);
   }
   
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 2rem;
-  }
-  
-  @media (max-width: 768px) {
-    .dashboard-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  .main-section, .sidebar > div {
-    background-color: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 2rem;
-  }
-  
-  .sidebar > div:last-child {
+  .subtitle {
+    color: var(--color-text-light);
     margin-bottom: 0;
   }
   
-  h3 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    color: #4f46e5;
+  .dashboard-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-xl);
   }
   
-  .no-challenges {
-    text-align: center;
-    padding: 2rem;
+  .section {
+    margin-bottom: var(--spacing-xl);
   }
   
-  .getting-started-container {
-    margin-top: 2rem;
-    text-align: left;
-    background-color: white;
-    border-radius: 8px;
+  .section h2 {
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .challenge-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .suggestion-card {
+    background-color: var(--color-white);
+    border-radius: var(--radius-md);
     overflow: hidden;
+    box-shadow: var(--shadow-sm);
   }
   
-  .primary-btn, .join-btn {
+  .suggestion-header {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .suggestion-type {
     display: inline-block;
-    background-color: #4f46e5;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    font-size: 1rem;
-    text-decoration: none;
-    cursor: pointer;
-    text-align: center;
-    transition: background-color 0.2s;
+    padding: 0.2rem 0.5rem;
+    background-color: var(--color-background);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--color-text-light);
+    margin-bottom: var(--spacing-xs);
+    text-transform: capitalize;
   }
   
-  .primary-btn:hover, .join-btn:hover {
-    background-color: #4338ca;
+  .suggestion-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
   }
   
-  .challenge-card {
-    background-color: #f9fafb;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+  .suggestion-body {
+    padding: var(--spacing-md);
   }
   
-  .challenge-card h4 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
+  .suggestion-meta {
+    margin-bottom: var(--spacing-md);
   }
   
-  .challenge-dates {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin-bottom: 0.5rem;
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--color-text-light);
+    font-size: 0.85rem;
+    margin-bottom: var(--spacing-xs);
   }
   
-  .challenge-exercise {
-    margin-bottom: 1rem;
-  }
-  
-  .join-btn {
+  .join-challenge-btn {
     width: 100%;
-    font-size: 0.875rem;
-    padding: 0.5rem 0;
   }
   
-  .view-all {
-    display: block;
-    text-align: center;
-    color: #4f46e5;
-    margin-top: 1rem;
-    text-decoration: none;
+  .view-all-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+    color: var(--color-primary);
+    font-size: 0.875rem;
     font-weight: 500;
   }
   
-  .view-all:hover {
-    text-decoration: underline;
+  .empty-suggestions {
+    background-color: var(--color-white);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
   }
   
-  .stats-container {
+  .empty-suggestions p {
+    color: var(--color-text-light);
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 1rem;
+    gap: var(--spacing-md);
   }
   
-  .stat-item {
-    background-color: #f9fafb;
-    border-radius: 8px;
-    padding: 1rem;
+  .stat-card {
+    background-color: var(--color-white);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
     text-align: center;
+    box-shadow: var(--shadow-sm);
   }
   
   .stat-value {
-    display: block;
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
-    color: #4f46e5;
-    margin-bottom: 0.25rem;
+    color: var(--color-primary);
+    line-height: 1.2;
   }
   
   .stat-label {
     font-size: 0.75rem;
-    color: #6b7280;
+    color: var(--color-text-light);
   }
   
-  .weekly-activity {
-    margin-top: 2rem;
-    background-color: #f9fafb;
-    border-radius: 8px;
+  .error-message {
+    color: var(--color-error);
+    text-align: center;
+    padding: var(--spacing-md);
+  }
+  
+  /* Skeleton loading */
+  .skeleton {
+    position: relative;
     overflow: hidden;
   }
+  
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+      var(--color-background) 0%, 
+      var(--color-white) 50%, 
+      var(--color-background) 100%
+    );
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+  
+  .skeleton-text {
+    height: 1.2em;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-background);
+    margin-bottom: 0.5em;
+  }
+  
+  .skeleton-text:last-child {
+    margin-bottom: 0;
+    width: 70%;
+  }
+  
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+  
+  @media (max-width: 1024px) {
+    .dashboard-layout {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-lg);
+    }
+    
+    .sidebar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-lg);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .sidebar {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
+</document_content>

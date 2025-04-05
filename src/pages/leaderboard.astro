@@ -1,6 +1,7 @@
 ---
 // src/pages/leaderboard.astro
 import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
 import Leaderboard from '../components/Leaderboard';
 import { supabase } from '../lib/supabase';
 
@@ -11,6 +12,7 @@ const accessToken = cookies.get('sb-access-token');
 const refreshToken = cookies.get('sb-refresh-token');
 
 let user = null;
+let challenges = [];
 
 if (accessToken && refreshToken) {
   const { data } = await supabase.auth.setSession({
@@ -19,253 +21,172 @@ if (accessToken && refreshToken) {
   });
   
   user = data.user;
+  
+  // Get active challenges for the filter
+  if (user) {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const { data: challengesData } = await supabase
+      .from('challenges')
+      .select('id, title')
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .order('title');
+      
+    challenges = challengesData || [];
+  }
 } else {
   return redirect('/auth');
 }
 ---
 
-<Layout title="Leaderboard - Pushups App">
-  <header>
-    <div class="container">
-      <h1>Pushups Challenge</h1>
-      <nav>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/challenges">Challenges</a></li>
-          <li><a href="/leaderboard" class="active">Leaderboard</a></li>
-          <li><a href="/profile">Profile</a></li>
-          <li>
-            <button id="logout">Logout</button>
-          </li>
-        </ul>
-      </nav>
-    </div>
-  </header>
+<Layout title="Leaderboard - FitChallenge">
+  <Header activePage="leaderboard" />
 
   <main>
     <div class="container">
-      <h2>Leaderboard</h2>
+      <section class="page-header">
+        <div>
+          <h1>Leaderboard</h1>
+          <p class="subtitle">See how you stack up against other participants</p>
+        </div>
+        
+        <div class="challenge-filter">
+          <label for="challenge-select">Filter by challenge:</label>
+          <select id="challenge-select" class="form-control">
+            <option value="">All Challenges</option>
+            {challenges.map(challenge => (
+              <option value={challenge.id}>{challenge.title}</option>
+            ))}
+          </select>
+        </div>
+      </section>
       
-      <Leaderboard client:load />
+      <section class="leaderboard-section">
+        <div id="leaderboard-container">
+          <Leaderboard client:load />
+        </div>
+      </section>
     </div>
   </main>
 </Layout>
 
 <script>
-  import { supabase } from '../lib/supabase';
+  // Challenge filter functionality
+  const challengeSelect = document.getElementById('challenge-select');
+  const leaderboardContainer = document.getElementById('leaderboard-container');
   
-  document.getElementById('logout')?.addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/auth';
+  challengeSelect?.addEventListener('change', async () => {
+    const selectedChallengeId = challengeSelect.value;
+    
+    // Remove old component
+    if (leaderboardContainer) {
+      leaderboardContainer.innerHTML = '<div class="loading-placeholder"><div class="loader"></div><p>Loading leaderboard...</p></div>';
+    }
+    
+    // Short delay to ensure the DOM updates
+    setTimeout(() => {
+      // Create new component with selected challenge ID
+      const leaderboardComponent = document.createElement('astro-island');
+      leaderboardComponent.setAttribute('client', 'load');
+      
+      if (selectedChallengeId) {
+        leaderboardComponent.setAttribute('component-url', '/src/components/Leaderboard');
+        leaderboardComponent.setAttribute('component-export', 'default');
+        leaderboardComponent.setAttribute('renderer-url', '/node_modules/@astrojs/react/client.js');
+        leaderboardComponent.setAttribute('props', JSON.stringify({
+          challengeId: selectedChallengeId
+        }));
+      } else {
+        leaderboardComponent.setAttribute('component-url', '/src/components/Leaderboard');
+        leaderboardComponent.setAttribute('component-export', 'default');
+        leaderboardComponent.setAttribute('renderer-url', '/node_modules/@astrojs/react/client.js');
+        leaderboardComponent.setAttribute('props', '{}');
+      }
+      
+      // Replace the placeholder
+      if (leaderboardContainer) {
+        leaderboardContainer.innerHTML = '';
+        leaderboardContainer.appendChild(leaderboardComponent);
+      }
+    }, 100);
   });
 </script>
 
 <style>
-  header {
-    background-color: #4f46e5;
-    color: white;
-    padding: 1rem 0;
+  main {
+    padding: var(--spacing-xl) 0;
   }
   
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1rem;
-  }
-  
-  header .container {
+  .page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-  }
-  
-  nav ul {
-    display: flex;
-    gap: 1.5rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  
-  nav a {
-    color: white;
-    text-decoration: none;
-  }
-  
-  nav a.active {
-    font-weight: bold;
-    text-decoration: underline;
-  }
-  
-  nav a:hover {
-    text-decoration: underline;
-  }
-  
-  #logout {
-    background: none;
-    border: 1px solid white;
-    color: white;
-    padding: 0.25rem 0.75rem;
-    cursor: pointer;
-    font-size: 0.875rem;
-    border-radius: 4px;
-    width: auto;
-    margin-top: 0;
-  }
-  
-  #logout:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  main {
-    padding: 2rem 0;
-  }
-  
-  h2 {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-  }
-  
-  /* Leaderboard styles */
-  .leaderboard {
-    background-color: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  .leaderboard-filters {
-    display: flex;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-xl);
     flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    gap: var(--spacing-md);
   }
   
-  .filter-group {
+  .page-header h1 {
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .subtitle {
+    color: var(--color-text-light);
+    margin-bottom: 0;
+  }
+  
+  .challenge-filter {
+    min-width: 250px;
+  }
+  
+  .challenge-filter label {
+    display: block;
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-xs);
+    color: var(--color-text-light);
+  }
+  
+  .leaderboard-section {
+    margin-bottom: var(--spacing-2xl);
+  }
+  
+  .loading-placeholder {
     display: flex;
     flex-direction: column;
-  }
-  
-  .filter-group label {
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    font-size: 0.875rem;
-    color: #4b5563;
-  }
-  
-  .filter-group select {
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    min-width: 200px;
-  }
-  
-  .leaderboard-table-container {
-    overflow-x: auto;
-  }
-  
-  .leaderboard-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  
-  .leaderboard-table th,
-  .leaderboard-table td {
-    padding: 0.75rem 1rem;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  
-  .leaderboard-table th {
-    background-color: #f9fafb;
-    font-weight: 600;
-    color: #374151;
-  }
-  
-  .rank-cell {
-    text-align: center;
-    font-weight: 600;
-  }
-  
-  .user-cell {
-    display: flex;
-    align-items: center;
-  }
-  
-  .user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    margin-right: 0.75rem;
-    object-fit: cover;
-  }
-  
-  .avatar-placeholder {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: #4f46e5;
-    color: white;
-    font-size: 1rem;
-    display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 0.75rem;
+    min-height: 200px;
+    background-color: var(--color-white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-xl);
+    color: var(--color-text-light);
   }
   
-  .count-cell {
-    font-weight: 600;
-    color: #4f46e5;
-  }
-  
-  .medal {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  .loader {
+    border: 3px solid var(--color-border);
+    border-radius: 50%;
+    border-top: 3px solid var(--color-primary);
     width: 24px;
     height: 24px;
-    border-radius: 50%;
-    color: white;
-    font-weight: 700;
+    animation: spin 1s linear infinite;
+    margin-bottom: var(--spacing-md);
   }
   
-  .rank-1 {
-    background-color: #fbbf24; /* Gold */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
   
-  .rank-2 {
-    background-color: #9ca3af; /* Silver */
-  }
-  
-  .rank-3 {
-    background-color: #d97706; /* Bronze */
-  }
-  
-  .top-1 {
-    background-color: rgba(251, 191, 36, 0.1);
-  }
-  
-  .top-2 {
-    background-color: rgba(156, 163, 175, 0.1);
-  }
-  
-  .top-3 {
-    background-color: rgba(217, 119, 6, 0.1);
-  }
-  
-  .loading, .no-data {
-    padding: 2rem;
-    text-align: center;
-    color: #6b7280;
-  }
-  
-  .error {
-    background-color: #fee2e2;
-    color: #b91c1c;
-    padding: 0.75rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
+  @media (max-width: 768px) {
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .challenge-filter {
+      width: 100%;
+    }
   }
 </style>

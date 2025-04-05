@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function ExerciseTracker() {
+export default function ExerciseTracker({ challengeId }) {
   const [loading, setLoading] = useState(true);
   const [userChallenges, setUserChallenges] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -26,47 +26,91 @@ export default function ExerciseTracker() {
         
         setCurrentUser(user);
         
-        // Get challenges the user has joined
-        const { data: participantData, error: participantError } = await supabase
-          .from('challenge_participants')
-          .select(`
-            challenge_id,
-            challenges:challenge_id (
-              id, title, exercise_type, goal_type, goal_value, start_date, end_date
-            )
-          `)
-          .eq('user_id', user.id);
-          
-        if (participantError) throw participantError;
-        
-        // Filter out challenges that haven't started yet or have ended
-        const now = new Date().toISOString().split('T')[0];
-        const activeChallenges = participantData
-          .filter(p => p.challenges.start_date <= now && p.challenges.end_date >= now)
-          .map(p => p.challenges);
-          
-        setUserChallenges(activeChallenges);
-        
-        // Get today's logs for active challenges
-        if (activeChallenges.length > 0) {
-          const challengeIds = activeChallenges.map(c => c.id);
-          
-          const { data: logData, error: logError } = await supabase
-            .from('exercise_logs')
+        // If specific challengeId is provided
+        if (challengeId) {
+          // Get the specific challenge
+          const { data: challenge, error: challengeError } = await supabase
+            .from('challenges')
             .select('*')
-            .eq('user_id', user.id)
-            .eq('log_date', today)
-            .in('challenge_id', challengeIds);
+            .eq('id', challengeId)
+            .single();
             
-          if (logError) throw logError;
+          if (challengeError) throw challengeError;
           
-          // Convert logs array to object with challenge_id as key
-          const logsObj = {};
-          logData?.forEach(log => {
-            logsObj[log.challenge_id] = log.exercise_count;
-          });
+          // Check if the user is a participant
+          const { data: participant, error: participantError } = await supabase
+            .from('challenge_participants')
+            .select('*')
+            .eq('challenge_id', challengeId)
+            .eq('user_id', user.id)
+            .single();
+            
+          if (participantError && participantError.code !== 'PGRST116') throw participantError;
           
-          setTodayLogs(logsObj);
+          if (participant) {
+            setUserChallenges([challenge]);
+            
+            // Get today's log for this challenge
+            const { data: logData, error: logError } = await supabase
+              .from('exercise_logs')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('challenge_id', challengeId)
+              .eq('log_date', today)
+              .single();
+              
+            if (logError && logError.code !== 'PGRST116') throw logError;
+            
+            if (logData) {
+              setTodayLogs({ [challengeId]: logData.exercise_count });
+            }
+          } else {
+            // User is not a participant in this challenge
+            setUserChallenges([]);
+          }
+        } else {
+          // Get all challenges the user has joined
+          const { data: participantData, error: participantError } = await supabase
+            .from('challenge_participants')
+            .select(`
+              challenge_id,
+              challenges:challenge_id (
+                id, title, exercise_type, goal_type, goal_value, start_date, end_date
+              )
+            `)
+            .eq('user_id', user.id);
+            
+          if (participantError) throw participantError;
+          
+          // Filter out challenges that haven't started yet or have ended
+          const now = new Date().toISOString().split('T')[0];
+          const activeChallenges = participantData
+            ?.filter(p => p.challenges.start_date <= now && p.challenges.end_date >= now)
+            .map(p => p.challenges) || [];
+            
+          setUserChallenges(activeChallenges);
+          
+          // Get today's logs for active challenges
+          if (activeChallenges.length > 0) {
+            const challengeIds = activeChallenges.map(c => c.id);
+            
+            const { data: logData, error: logError } = await supabase
+              .from('exercise_logs')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('log_date', today)
+              .in('challenge_id', challengeIds);
+              
+            if (logError) throw logError;
+            
+            // Convert logs array to object with challenge_id as key
+            const logsObj = {};
+            logData?.forEach(log => {
+              logsObj[log.challenge_id] = log.exercise_count;
+            });
+            
+            setTodayLogs(logsObj);
+          }
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -101,7 +145,7 @@ export default function ExerciseTracker() {
     return () => {
       supabase.removeChannel(logsSubscription);
     };
-  }, [today]);
+  }, [challengeId, today]);
   
   const handleCountChange = (challengeId, count) => {
     setTodayLogs(prev => ({
@@ -169,291 +213,363 @@ export default function ExerciseTracker() {
     }
   };
   
-  if (loading) return <div className="loading">Loading your challenges...</div>;
+  if (loading) return (
+    <div className="loading-container">
+      <div className="loader"></div>
+      <p>Loading your challenges...</p>
+    </div>
+  );
   
   if (userChallenges.length === 0) {
     return (
-      <div className="no-challenges">
+      <div className="empty-state">
+        <div className="empty-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 8v4"></path>
+            <path d="M12 16h.01"></path>
+          </svg>
+        </div>
         <h3>No Active Challenges</h3>
-        <p>You haven't joined any active challenges yet. Visit the Challenges page to find and join a challenge.</p>
-        <a href="/challenges" className="btn">Find Challenges</a>
+        <p>You haven't joined any active challenges yet.</p>
+        <a href="/challenges" className="btn btn-primary">Find Challenges</a>
       </div>
     );
   }
   
   return (
     <div className="exercise-tracker">
-      <p className="date-display">Today: <strong>{new Date().toLocaleDateString()}</strong></p>
+      <div className="date-display">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>Today: <strong>{new Date().toLocaleDateString()}</strong></span>
+      </div>
       
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="alert alert-error">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>{error}</span>
+        </div>
+      )}
       
-      <div className="challenges-list">
+      <div className="challenge-cards">
         {userChallenges.map(challenge => (
-          <div key={challenge.id} className="challenge-log-card">
-            <div className="challenge-info">
-              <h4>{challenge.title}</h4>
-              <span className="exercise-type">{challenge.exercise_type}</span>
+          <div key={challenge.id} className="challenge-card">
+            <div className="card-header">
+              <div className="challenge-type">{challenge.exercise_type}</div>
+              <h3>{challenge.title}</h3>
             </div>
             
-            <div className="log-content">
-              <div className="log-input">
-                <label htmlFor={`count-${challenge.id}`}>
-                  Today's count:
-                </label>
-                <div className="count-control">
+            <div className="card-body">
+              <div className="log-form">
+                <div className="log-label">Today's count:</div>
+                <div className="counter">
                   <button 
                     onClick={() => handleCountChange(
                       challenge.id, 
                       Math.max(0, (todayLogs[challenge.id] || 0) - 1)
                     )}
-                    className="count-btn"
+                    className="counter-btn"
                     aria-label="Decrease count"
                   >
-                    -
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
                   </button>
+                  
                   <input
-                    id={`count-${challenge.id}`}
                     type="number"
                     min="0"
                     value={todayLogs[challenge.id] || 0}
                     onChange={(e) => handleCountChange(challenge.id, e.target.value)}
+                    className="counter-input"
                   />
+                  
                   <button 
                     onClick={() => handleCountChange(
                       challenge.id, 
                       (todayLogs[challenge.id] || 0) + 1
                     )}
-                    className="count-btn"
+                    className="counter-btn"
                     aria-label="Increase count"
                   >
-                    +
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
                   </button>
                 </div>
               </div>
               
-              <button 
-                onClick={() => saveLog(challenge.id)}
-                className="save-btn"
-              >
-                Save
-              </button>
+              {challenge.goal_type === 'daily_count' && (
+                <div className="goal-progress">
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill"
+                      style={{ 
+                        width: `${Math.min(100, ((todayLogs[challenge.id] || 0) / challenge.goal_value) * 100)}%` 
+                      }}
+                    ></div>
+                  </div>
+                  <div className="progress-text">
+                    <span className="current">{todayLogs[challenge.id] || 0}</span>
+                    <span className="separator">/</span>
+                    <span className="goal">{challenge.goal_value}</span>
+                  </div>
+                </div>
+              )}
             </div>
             
-            {saveSuccess[challenge.id] && (
-              <div className="save-success">Saved successfully!</div>
-            )}
-            
-            {challenge.goal_type === 'daily_count' && (
-              <div className="progress-section">
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill"
-                    style={{ 
-                      width: `${Math.min(100, ((todayLogs[challenge.id] || 0) / challenge.goal_value) * 100)}%` 
-                    }}
-                  />
+            <div className="card-footer">
+              <button 
+                onClick={() => saveLog(challenge.id)}
+                className="btn btn-primary btn-sm"
+              >
+                Save Progress
+              </button>
+              
+              {saveSuccess[challenge.id] && (
+                <div className="save-success">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                  <span>Saved!</span>
                 </div>
-                <div className="progress-text">
-                  <span className="current">{todayLogs[challenge.id] || 0}</span>
-                  <span className="separator">/</span>
-                  <span className="goal">{challenge.goal_value}</span>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
       </div>
       
       <style jsx>{`
         .exercise-tracker {
-          margin-top: 1rem;
+          margin-top: var(--spacing-md);
         }
         
         .date-display {
-          margin-bottom: 1rem;
-          color: #4b5563;
-        }
-        
-        .error-message {
-          background-color: #fee2e2;
-          color: #b91c1c;
-          padding: 0.75rem;
-          border-radius: 4px;
-          margin-bottom: 1rem;
-        }
-        
-        .save-success {
-          background-color: #dcfce7;
-          color: #166534;
-          padding: 0.5rem;
-          border-radius: 4px;
-          margin-top: 0.5rem;
-          font-size: 0.875rem;
-          text-align: center;
-        }
-        
-        .challenges-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        
-        .challenge-log-card {
-          background-color: #f9fafb;
-          border-radius: 8px;
-          padding: 1rem;
-          border: 1px solid #e5e7eb;
-        }
-        
-        .challenge-info {
-          margin-bottom: 0.75rem;
-        }
-        
-        .challenge-info h4 {
-          margin: 0 0 0.25rem 0;
-        }
-        
-        .exercise-type {
-          font-size: 0.875rem;
-          color: #6b7280;
-        }
-        
-        .log-content {
-          display: flex;
-          align-items: flex-end;
-          gap: 1rem;
-        }
-        
-        .log-input {
-          flex: 1;
-        }
-        
-        .log-input label {
-          display: block;
-          font-size: 0.875rem;
-          margin-bottom: 0.5rem;
-        }
-        
-        .count-control {
           display: flex;
           align-items: center;
+          gap: var(--spacing-sm);
+          margin-bottom: var(--spacing-md);
+          color: var(--color-text-light);
+          font-size: 0.9rem;
         }
         
-        .count-btn {
-          background-color: #e5e7eb;
-          border: none;
-          width: 2rem;
-          height: 2rem;
-          font-size: 1.25rem;
+        .date-display strong {
+          color: var(--color-text);
+        }
+        
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: var(--spacing-xl);
+          color: var(--color-text-light);
+        }
+        
+        .loader {
+          border: 3px solid var(--color-border);
+          border-radius: 50%;
+          border-top: 3px solid var(--color-primary);
+          width: 24px;
+          height: 24px;
+          animation: spin 1s linear infinite;
+          margin-bottom: var(--spacing-md);
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+          text-align: center;
+          padding: var(--spacing-xl) 0;
+        }
+        
+        .empty-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background-color: var(--color-background);
+          color: var(--color-text-light);
+          margin-bottom: var(--spacing-md);
+        }
+        
+        .challenge-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: var(--spacing-lg);
+        }
+        
+        .challenge-card {
+          background-color: var(--color-white);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-sm);
+          overflow: hidden;
+        }
+        
+        .card-header {
+          padding: var(--spacing-md);
+          border-bottom: 1px solid var(--color-border);
+        }
+        
+        .challenge-type {
+          display: inline-block;
+          padding: 0.2rem 0.5rem;
+          background-color: var(--color-background);
+          border-radius: var(--radius-sm);
+          font-size: 0.75rem;
+          color: var(--color-text-light);
+          margin-bottom: var(--spacing-xs);
+          text-transform: capitalize;
+        }
+        
+        .card-header h3 {
+          margin: 0;
+          font-size: 1.1rem;
+        }
+        
+        .card-body {
+          padding: var(--spacing-md);
+        }
+        
+        .card-footer {
+          padding: var(--spacing-md);
+          border-top: 1px solid var(--color-border);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        
+        .log-form {
+          margin-bottom: var(--spacing-md);
+        }
+        
+        .log-label {
+          font-size: 0.875rem;
+          color: var(--color-text-light);
+          margin-bottom: var(--spacing-sm);
+        }
+        
+        .counter {
+          display: flex;
+          align-items: center;
+          max-width: 180px;
+        }
+        
+        .counter-btn {
           display: flex;
           align-items: center;
           justify-content: center;
-          cursor: pointer;
+          width: 40px;
+          height: 40px;
+          background: var(--color-white);
+          border: 1px solid var(--color-border);
+          color: var(--color-text);
         }
         
-        .count-btn:first-child {
-          border-radius: 4px 0 0 4px;
+        .counter-btn:first-child {
+          border-radius: var(--radius-md) 0 0 var(--radius-md);
         }
         
-        .count-btn:last-child {
-          border-radius: 0 4px 4px 0;
+        .counter-btn:last-child {
+          border-radius: 0 var(--radius-md) var(--radius-md) 0;
         }
         
-        .count-control input {
-          width: 4rem;
-          height: 2rem;
-          border: 1px solid #e5e7eb;
+        .counter-input {
+          width: 60px;
+          height: 40px;
+          border: 1px solid var(--color-border);
+          border-left: none;
+          border-right: none;
           text-align: center;
           font-size: 1rem;
+          font-weight: 500;
         }
         
-        .save-btn {
-          background-color: #4f46e5;
-          color: white;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 0.875rem;
-          height: 2rem;
+        .counter-input:focus {
+          outline: none;
         }
         
-        .save-btn:hover {
-          background-color: #4338ca;
+        /* Remove spinner for number input */
+        .counter-input::-webkit-outer-spin-button,
+        .counter-input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
         }
         
-        .progress-section {
-          margin-top: 1rem;
+        .counter-input[type=number] {
+          -moz-appearance: textfield;
+        }
+        
+        .goal-progress {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: var(--spacing-md);
         }
         
         .progress-bar {
           flex: 1;
-          height: 0.5rem;
-          background-color: #e5e7eb;
+          height: 8px;
+          background-color: var(--color-background);
           border-radius: 9999px;
           overflow: hidden;
         }
         
         .progress-fill {
           height: 100%;
-          background-color: #4f46e5;
+          background-color: var(--color-primary);
           border-radius: 9999px;
+          transition: width 0.3s ease;
         }
         
         .progress-text {
-          font-size: 0.875rem;
-          font-weight: 500;
           display: flex;
           align-items: center;
-          gap: 0.25rem;
+          gap: 4px;
+          font-size: 0.875rem;
+          white-space: nowrap;
         }
         
         .current {
-          color: #4f46e5;
+          font-weight: 600;
         }
         
         .separator {
-          color: #9ca3af;
+          color: var(--color-text-light);
         }
         
         .goal {
-          color: #6b7280;
+          color: var(--color-text-light);
         }
         
-        .loading {
-          padding: 2rem;
-          text-align: center;
-          color: #6b7280;
+        .save-success {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
+          color: var(--color-success);
+          font-size: 0.875rem;
         }
         
-        .no-challenges {
-          padding: 2rem;
-          text-align: center;
-        }
-        
-        .btn {
-          display: inline-block;
-          background-color: #4f46e5;
-          color: white;
-          text-decoration: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 4px;
-          margin-top: 1rem;
-        }
-        
-        @media (max-width: 640px) {
-          .log-content {
-            flex-direction: column;
-            align-items: stretch;
-          }
-          
-          .save-btn {
-            margin-top: 0.5rem;
-            width: 100%;
-          }
+        .alert {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
+          margin-bottom: var(--spacing-md);
         }
       `}</style>
     </div>

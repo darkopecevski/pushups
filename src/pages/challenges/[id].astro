@@ -1,7 +1,9 @@
 ---
 // src/pages/challenges/[id].astro
 import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
 import Leaderboard from '../../components/Leaderboard';
+import ExerciseTracker from '../../components/ExerciseTracker';
 import { supabase } from '../../lib/supabase';
 
 // Get challenge ID from URL
@@ -44,7 +46,7 @@ const { data: challenge } = await supabase
   .from('challenges')
   .select(`
     *,
-    creator:created_by (username),
+    creator:created_by (username, avatar_url),
     participants:challenge_participants (
       user_id
     )
@@ -80,77 +82,124 @@ const { data: exerciseData } = await supabase
   .eq('challenge_id', id);
   
 const totalExercises = exerciseData?.reduce((sum, log) => sum + log.exercise_count, 0) || 0;
+
+// Determine challenge status
+const getChallengeStatus = () => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  if (challenge.start_date > today) {
+    return 'upcoming';
+  } else if (challenge.end_date < today) {
+    return 'completed';
+  } else {
+    return 'active';
+  }
+};
+
+const status = getChallengeStatus();
 ---
 
-<Layout title={challenge.title + ' - Pushups App'}>
-  <header>
-    <div class="container">
-      <h1>Pushups Challenge</h1>
-      <nav>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/challenges">Challenges</a></li>
-          <li><a href="/profile">Profile</a></li>
-          <li>
-            <button id="logout">Logout</button>
-          </li>
-        </ul>
-      </nav>
-    </div>
-  </header>
+<Layout title={`${challenge.title} - FitChallenge`}>
+  <Header activePage="challenges" />
 
   <main>
     <div class="container">
+      <nav class="breadcrumbs">
+        <a href="/challenges">Challenges</a>
+        <span class="separator">/</span>
+        <span class="current">{challenge.title}</span>
+      </nav>
+      
       <div class="challenge-header">
-        <div class="challenge-title">
-          <a href="/challenges" class="back-link">&larr; Back to Challenges</a>
-          <h2>{challenge.title}</h2>
+        <div>
+          <div class={`challenge-status ${status}`}>{status}</div>
+          <h1>{challenge.title}</h1>
         </div>
         
-        {!isParticipant && (
-          <div class="join-action">
-            <button id="joinChallenge" data-id={challenge.id}>Join Challenge</button>
-          </div>
+        {!isParticipant && status !== 'completed' && (
+          <button id="joinChallenge" class="btn btn-primary" data-id={challenge.id}>
+            Join Challenge
+          </button>
         )}
       </div>
       
-      <div class="challenge-grid">
-        <div class="challenge-details-card">
-          <div class="challenge-description">
-            <p>{challenge.description || 'No description provided.'}</p>
-          </div>
+      <div class="challenge-layout">
+        <div class="main-content">
+          <section class="challenge-details card">
+            <div class="description">
+              <h2>About this Challenge</h2>
+              <p>{challenge.description || 'No description provided for this challenge.'}</p>
+            </div>
+            
+            <div class="challenge-info-grid">
+              <div class="info-card">
+                <div class="info-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                </div>
+                <div class="info-content">
+                  <div class="info-label">Type</div>
+                  <div class="info-value">{challenge.exercise_type}</div>
+                </div>
+              </div>
+              
+              <div class="info-card">
+                <div class="info-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                    <line x1="6" y1="1" x2="6" y2="4"></line>
+                    <line x1="10" y1="1" x2="10" y2="4"></line>
+                    <line x1="14" y1="1" x2="14" y2="4"></line>
+                  </svg>
+                </div>
+                <div class="info-content">
+                  <div class="info-label">Goal</div>
+                  <div class="info-value">{challenge.goal_value} {challenge.goal_type.replace('_', ' ')}</div>
+                </div>
+              </div>
+              
+              <div class="info-card">
+                <div class="info-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </div>
+                <div class="info-content">
+                  <div class="info-label">Duration</div>
+                  <div class="info-value">{startDate} to {endDate}</div>
+                </div>
+              </div>
+              
+              <div class="info-card">
+                <div class="info-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <div class="info-content">
+                  <div class="info-label">Created by</div>
+                  <div class="info-value">{challenge.creator?.username || 'Administrator'}</div>
+                </div>
+              </div>
+            </div>
+          </section>
           
-          <div class="challenge-meta">
-            <div class="meta-item">
-              <span class="meta-label">Exercise Type:</span>
-              <span class="meta-value">{challenge.exercise_type}</span>
-            </div>
-            
-            <div class="meta-item">
-              <span class="meta-label">Goal:</span>
-              <span class="meta-value">
-                {challenge.goal_value} {challenge.goal_type.replace('_', ' ')}
-              </span>
-            </div>
-            
-            <div class="meta-item">
-              <span class="meta-label">Duration:</span>
-              <span class="meta-value">{startDate} to {endDate}</span>
-            </div>
-            
-            <div class="meta-item">
-              <span class="meta-label">Created by:</span>
-              <span class="meta-value">{challenge.creator?.username || 'Administrator'}</span>
-            </div>
-            
-            <div class="meta-item">
-              <span class="meta-label">Participants:</span>
-              <span class="meta-value">{participantCount}</span>
-            </div>
-          </div>
+          {isParticipant && status === 'active' && (
+            <section class="challenge-tracking card">
+              <h2>Track Your Progress</h2>
+              <ExerciseTracker client:load challengeId={challenge.id} />
+            </section>
+          )}
           
-          <div class="challenge-progress">
-            <h3>Challenge Progress</h3>
+          <section class="challenge-progress card">
+            <h2>Challenge Progress</h2>
             
             <div class="progress-stats">
               <div class="stat-block">
@@ -167,20 +216,33 @@ const totalExercises = exerciseData?.reduce((sum, log) => sum + log.exercise_cou
                 <div class="stat-value">{totalExercises.toLocaleString()}</div>
                 <div class="stat-label">Total {challenge.exercise_type}</div>
               </div>
+              
+              <div class="stat-block">
+                <div class="stat-value">{participantCount}</div>
+                <div class="stat-label">Participants</div>
+              </div>
             </div>
             
-            <div class="progress-bar">
-              <div 
-                class="progress-fill" 
-                style={`width: ${progressPercentage}%`}
-              ></div>
-              <span class="progress-text">{progressPercentage}% Complete</span>
+            <div class="progress-section">
+              <div class="progress-text">
+                <span>{progressPercentage}% Complete</span>
+                <span>{daysPassed} of {totalDays} days</span>
+              </div>
+              <div class="progress-bar">
+                <div 
+                  class="progress-fill" 
+                  style={`width: ${progressPercentage}%`}
+                ></div>
+              </div>
             </div>
-          </div>
+          </section>
         </div>
         
-        <div class="challenge-leaderboard">
-          <Leaderboard client:load challengeId={challenge.id} />
+        <div class="sidebar">
+          <section class="challenge-leaderboard card">
+            <h2>Leaderboard</h2>
+            <Leaderboard client:load challengeId={challenge.id} />
+          </section>
         </div>
       </div>
     </div>
@@ -190,12 +252,11 @@ const totalExercises = exerciseData?.reduce((sum, log) => sum + log.exercise_cou
 <script define:vars={{ challengeId: challenge.id }}>
   import { supabase } from '../../lib/supabase';
   
-  document.getElementById('logout')?.addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/auth';
-  });
-  
-  document.getElementById('joinChallenge')?.addEventListener('click', async () => {
+  document.getElementById('joinChallenge')?.addEventListener('click', async (event) => {
+    const button = event.target;
+    button.disabled = true;
+    button.textContent = 'Joining...';
+    
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -219,227 +280,215 @@ const totalExercises = exerciseData?.reduce((sum, log) => sum + log.exercise_cou
     } catch (err) {
       console.error('Error joining challenge:', err);
       alert('Error joining challenge: ' + err.message);
+      button.disabled = false;
+      button.textContent = 'Join Challenge';
     }
   });
 </script>
 
 <style>
-  header {
-    background-color: #4f46e5;
-    color: white;
-    padding: 1rem 0;
+  main {
+    padding: var(--spacing-xl) 0;
   }
   
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1rem;
-  }
-  
-  header .container {
+  .breadcrumbs {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+    font-size: 0.875rem;
   }
   
-  nav ul {
-    display: flex;
-    gap: 1.5rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  
-  nav a {
-    color: white;
+  .breadcrumbs a {
+    color: var(--color-text-light);
     text-decoration: none;
   }
   
-  nav a:hover {
+  .breadcrumbs a:hover {
+    color: var(--color-primary);
     text-decoration: underline;
   }
   
-  #logout {
-    background: none;
-    border: 1px solid white;
-    color: white;
-    padding: 0.25rem 0.75rem;
-    cursor: pointer;
-    font-size: 0.875rem;
-    border-radius: 4px;
-    width: auto;
-    margin-top: 0;
+  .separator {
+    color: var(--color-text-light);
   }
   
-  #logout:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  main {
-    padding: 2rem 0;
+  .current {
+    font-weight: 500;
+    color: var(--color-text);
   }
   
   .challenge-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 2rem;
+    margin-bottom: var(--spacing-xl);
   }
   
-  .back-link {
+  .challenge-header h1 {
+    margin: var(--spacing-xs) 0 0 0;
+  }
+  
+  .challenge-status {
     display: inline-block;
-    color: #6b7280;
-    text-decoration: none;
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
   
-  .back-link:hover {
-    color: #4f46e5;
+  .challenge-status.active {
+    background-color: rgba(255, 90, 95, 0.1);
+    color: var(--color-primary);
   }
   
-  h2 {
-    margin-top: 0;
-    margin-bottom: 0;
+  .challenge-status.upcoming {
+    background-color: rgba(0, 166, 153, 0.1);
+    color: var(--color-secondary);
   }
   
-  #joinChallenge {
-    background-color: #4f46e5;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
+  .challenge-status.completed {
+    background-color: rgba(118, 118, 118, 0.1);
+    color: var(--color-text-light);
   }
   
-  #joinChallenge:hover {
-    background-color: #4338ca;
-  }
-  
-  .challenge-grid {
+  .challenge-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-xl);
   }
   
-  @media (max-width: 768px) {
-    .challenge-grid {
+  .card {
+    background-color: var(--color-white);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .card h2 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-md);
+    font-size: 1.25rem;
+  }
+  
+  .description {
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .description p {
+    margin: 0;
+    color: var(--color-text);
+    line-height: 1.6;
+  }
+  
+  .challenge-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+  }
+  
+  .info-card {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md);
+    background-color: var(--color-background);
+    border-radius: var(--radius-md);
+  }
+  
+  .info-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 90, 95, 0.1);
+    color: var(--color-primary);
+    margin-right: var(--spacing-md);
+    flex-shrink: 0;
+  }
+  
+  .info-content {
+    flex: 1;
+  }
+  
+  .info-label {
+    font-size: 0.75rem;
+    color: var(--color-text-light);
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .info-value {
+    font-weight: 500;
+  }
+  
+  .progress-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .stat-block {
+    text-align: center;
+    padding: var(--spacing-md);
+    background-color: var(--color-background);
+    border-radius: var(--radius-md);
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    line-height: 1.2;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-light);
+  }
+  
+  .progress-section {
+    margin-top: var(--spacing-lg);
+  }
+  
+  .progress-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .progress-bar {
+    height: 8px;
+    background-color: var(--color-background);
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background-color: var(--color-primary);
+    border-radius: 9999px;
+    transition: width 0.3s ease;
+  }
+  
+  @media (max-width: 960px) {
+    .challenge-layout {
       grid-template-columns: 1fr;
     }
     
     .challenge-header {
       flex-direction: column;
-      gap: 1rem;
-    }
-    
-    .join-action {
-      width: 100%;
+      gap: var(--spacing-md);
     }
     
     #joinChallenge {
       width: 100%;
     }
-  }
-  
-  .challenge-details-card {
-    background-color: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  .challenge-description {
-    margin-bottom: 1.5rem;
-  }
-  
-  .challenge-meta {
-    margin-bottom: 2rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-  
-  .meta-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  
-  .meta-label {
-    font-size: 0.75rem;
-    color: #6b7280;
-  }
-  
-  .meta-value {
-    font-weight: 500;
-  }
-  
-  .challenge-progress h3 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    color: #4f46e5;
-  }
-  
-  .progress-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .stat-block {
-    background-color: #f3f4f6;
-    padding: 1rem;
-    border-radius: 8px;
-    text-align: center;
-  }
-  
-  .stat-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #4f46e5;
-  }
-  
-  .stat-label {
-    font-size: 0.75rem;
-    color: #6b7280;
-    margin-top: 0.25rem;
-  }
-  
-  .progress-bar {
-    background-color: #f3f4f6;
-    border-radius: 9999px;
-    height: 1.5rem;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .progress-fill {
-    background-color: #4f46e5;
-    height: 100%;
-    border-radius: 9999px;
-    transition: width 0.3s ease;
-  }
-  
-  .progress-text {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #1f2937;
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-  
-  .challenge-leaderboard {
-    padding: 1.5rem;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 </style>
