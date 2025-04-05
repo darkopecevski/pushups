@@ -13,7 +13,7 @@
     "@astrojs/netlify": "^6.2.5",
     "@astrojs/react": "^3.0.9",
     "@supabase/supabase-js": "^2.39.1",
-    "astro": "^4.0.8",
+    "astro": "^5.3.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
