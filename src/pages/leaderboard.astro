@@ -1,0 +1,271 @@
+---
+// src/pages/leaderboard.astro
+import Layout from '../layouts/Layout.astro';
+import Leaderboard from '../components/Leaderboard';
+import { supabase } from '../lib/supabase';
+
+// Check if user is authenticated
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get('sb-access-token');
+const refreshToken = cookies.get('sb-refresh-token');
+
+let user = null;
+
+if (accessToken && refreshToken) {
+  const { data } = await supabase.auth.setSession({
+    access_token: accessToken.value,
+    refresh_token: refreshToken.value
+  });
+  
+  user = data.user;
+} else {
+  return redirect('/auth');
+}
+---
+
+<Layout title="Leaderboard - Pushups App">
+  <header>
+    <div class="container">
+      <h1>Pushups Challenge</h1>
+      <nav>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/challenges">Challenges</a></li>
+          <li><a href="/leaderboard" class="active">Leaderboard</a></li>
+          <li><a href="/profile">Profile</a></li>
+          <li>
+            <button id="logout">Logout</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h2>Leaderboard</h2>
+      
+      <Leaderboard client:load />
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { supabase } from '../lib/supabase';
+  
+  document.getElementById('logout')?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/auth';
+  });
+</script>
+
+<style>
+  header {
+    background-color: #4f46e5;
+    color: white;
+    padding: 1rem 0;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  nav ul {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  nav a {
+    color: white;
+    text-decoration: none;
+  }
+  
+  nav a.active {
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  
+  nav a:hover {
+    text-decoration: underline;
+  }
+  
+  #logout {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border-radius: 4px;
+    width: auto;
+    margin-top: 0;
+  }
+  
+  #logout:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  main {
+    padding: 2rem 0;
+  }
+  
+  h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Leaderboard styles */
+  .leaderboard {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .leaderboard-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .filter-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #4b5563;
+  }
+  
+  .filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    min-width: 200px;
+  }
+  
+  .leaderboard-table-container {
+    overflow-x: auto;
+  }
+  
+  .leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .leaderboard-table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+  }
+  
+  .rank-cell {
+    text-align: center;
+    font-weight: 600;
+  }
+  
+  .user-cell {
+    display: flex;
+    align-items: center;
+  }
+  
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 0.75rem;
+    object-fit: cover;
+  }
+  
+  .avatar-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #4f46e5;
+    color: white;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.75rem;
+  }
+  
+  .count-cell {
+    font-weight: 600;
+    color: #4f46e5;
+  }
+  
+  .medal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: white;
+    font-weight: 700;
+  }
+  
+  .rank-1 {
+    background-color: #fbbf24; /* Gold */
+  }
+  
+  .rank-2 {
+    background-color: #9ca3af; /* Silver */
+  }
+  
+  .rank-3 {
+    background-color: #d97706; /* Bronze */
+  }
+  
+  .top-1 {
+    background-color: rgba(251, 191, 36, 0.1);
+  }
+  
+  .top-2 {
+    background-color: rgba(156, 163, 175, 0.1);
+  }
+  
+  .top-3 {
+    background-color: rgba(217, 119, 6, 0.1);
+  }
+  
+  .loading, .no-data {
+    padding: 2rem;
+    text-align: center;
+    color: #6b7280;
+  }
+  
+  .error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+</style>

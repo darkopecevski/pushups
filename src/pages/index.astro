@@ -1,0 +1,172 @@
+---
+// src/pages/index.astro
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '../lib/supabase';
+
+// Check if user is authenticated
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get('sb-access-token');
+const refreshToken = cookies.get('sb-refresh-token');
+
+let user = null;
+
+if (accessToken && refreshToken) {
+  const { data } = await supabase.auth.setSession({
+    access_token: accessToken.value,
+    refresh_token: refreshToken.value
+  });
+  
+  user = data.user;
+} else {
+  return redirect('/auth');
+}
+
+// Get user profile
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('id', user.id)
+  .single();
+---
+
+<Layout title="Pushups App">
+  <header>
+    <div class="container">
+      <h1>Pushups Challenge</h1>
+      <nav>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/challenges">Challenges</a></li>
+          <li><a href="/profile">Profile</a></li>
+          <li>
+            <button id="logout">Logout</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h2>Welcome, {profile?.username || 'User'}!</h2>
+      <p>Get started with your fitness challenges here.</p>
+      
+      <div class="dashboard">
+        <div class="dashboard-card">
+          <h3>Your Active Challenges</h3>
+          <p>You don't have any active challenges yet.</p>
+          <a href="/challenges" class="btn">Find Challenges</a>
+        </div>
+        
+        <div class="dashboard-card">
+          <h3>Your Progress</h3>
+          <p>Start a challenge to track your progress.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { supabase } from '../lib/supabase';
+  
+  document.getElementById('logout')?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/auth';
+  });
+</script>
+
+<style>
+  header {
+    background-color: #4f46e5;
+    color: white;
+    padding: 1rem 0;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  nav ul {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  nav a {
+    color: white;
+    text-decoration: none;
+  }
+  
+  nav a:hover {
+    text-decoration: underline;
+  }
+  
+  #logout {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border-radius: 4px;
+    width: auto;
+    margin-top: 0;
+  }
+  
+  #logout:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  main {
+    padding: 2rem 0;
+  }
+  
+  h2 {
+    margin-top: 0;
+  }
+  
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  
+  .dashboard-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dashboard-card h3 {
+    margin-top: 0;
+    color: #4f46e5;
+  }
+  
+  .btn {
+    display: inline-block;
+    background-color: #4f46e5;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    margin-top: 1rem;
+  }
+  
+  .btn:hover {
+    background-color: #4338ca;
+  }
+</style>

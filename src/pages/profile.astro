@@ -1,0 +1,560 @@
+---
+// src/pages/profile.astro
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '../lib/supabase';
+
+// Check if user is authenticated
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get('sb-access-token');
+const refreshToken = cookies.get('sb-refresh-token');
+
+let user = null;
+let profile = null;
+let userChallenges = [];
+let activityStats = null;
+
+if (accessToken && refreshToken) {
+  const { data } = await supabase.auth.setSession({
+    access_token: accessToken.value,
+    refresh_token: refreshToken.value
+  });
+  
+  user = data.user;
+  
+  // Get user profile
+  if (user) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+      
+    profile = profileData;
+    
+    // Get challenges the user has joined
+    const { data: challengesData } = await supabase
+      .from('challenge_participants')
+      .select(`
+        challenges:challenge_id (
+          id, title, exercise_type, goal_type, goal_value, start_date, end_date
+        )
+      `)
+      .eq('user_id', user.id);
+      
+    userChallenges = challengesData?.map(item => item.challenges) || [];
+    
+    // Get user activity stats
+    const { data: logsData } = await supabase
+      .from('exercise_logs')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('log_date', { ascending: false });
+      
+    if (logsData) {
+      // Calculate total exercises
+      const totalExercises = logsData.reduce((sum, log) => sum + log.exercise_count, 0);
+      
+      // Calculate total days active
+      const activeDays = new Set(logsData.map(log => log.log_date)).size;
+      
+      // Get most recent activity
+      const mostRecentActivity = logsData.length > 0 ? logsData[0].log_date : null;
+      
+      // Get best streak using the database function
+      let bestStreak = 0;
+      if (userChallenges.length > 0) {
+        for (const challenge of userChallenges) {
+          const { data: streakData } = await supabase.rpc(
+            'get_current_streak',
+            { p_user_id: user.id, p_challenge_id: challenge.id }
+          );
+          bestStreak = Math.max(bestStreak, streakData || 0);
+        }
+      }
+      
+      activityStats = {
+        totalExercises,
+        activeDays,
+        mostRecentActivity,
+        bestStreak
+      };
+    }
+  }
+} else {
+  return redirect('/auth');
+}
+---
+
+<Layout title="Profile - Pushups App">
+  <header>
+    <div class="container">
+      <h1>Pushups Challenge</h1>
+      <nav>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/challenges">Challenges</a></li>
+          <li><a href="/profile" class="active">Profile</a></li>
+          <li>
+            <button id="logout">Logout</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="profile-container">
+        <div class="profile-header">
+          <div class="profile-avatar">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Profile" />
+            ) : (
+              <div class="avatar-placeholder">
+                {profile?.username?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            )}
+          </div>
+          
+          <div class="profile-info">
+            <h2>{profile?.full_name || 'User'}</h2>
+            <p class="username">@{profile?.username}</p>
+            {profile?.is_admin && <span class="admin-badge">Admin</span>}
+          </div>
+        </div>
+        
+        <div class="profile-content">
+          <div class="profile-section">
+            <h3>Activity Stats</h3>
+            
+            {activityStats ? (
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <span class="stat-value">{activityStats.totalExercises}</span>
+                  <span class="stat-label">Total Exercises</span>
+                </div>
+                
+                <div class="stat-card">
+                  <span class="stat-value">{activityStats.activeDays}</span>
+                  <span class="stat-label">Days Active</span>
+                </div>
+                
+                <div class="stat-card">
+                  <span class="stat-value">{activityStats.bestStreak}</span>
+                  <span class="stat-label">Best Streak</span>
+                </div>
+                
+                <div class="stat-card">
+                  <span class="stat-value">
+                    {activityStats.mostRecentActivity ? 
+                      new Date(activityStats.mostRecentActivity).toLocaleDateString() : 
+                      'Never'
+                    }
+                  </span>
+                  <span class="stat-label">Last Activity</span>
+                </div>
+              </div>
+            ) : (
+              <p>No activity recorded yet. Start logging exercises to see your stats!</p>
+            )}
+          </div>
+          
+          <div class="profile-section">
+            <h3>Your Challenges</h3>
+            
+            {userChallenges.length > 0 ? (
+              <div class="challenges-list">
+                {userChallenges.map(challenge => (
+                  <div class="challenge-item">
+                    <h4>{challenge.title}</h4>
+                    <div class="challenge-dates">
+                      <span>{new Date(challenge.start_date).toLocaleDateString()}</span>
+                      <span> - </span>
+                      <span>{new Date(challenge.end_date).toLocaleDateString()}</span>
+                    </div>
+                    <p>
+                      Goal: {challenge.goal_value} {challenge.exercise_type} 
+                      ({challenge.goal_type.replace('_', ' ')})
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="no-challenges">
+                <p>You haven't joined any challenges yet.</p>
+                <a href="/challenges" class="btn">Find Challenges</a>
+              </div>
+            )}
+          </div>
+          
+          <div class="profile-section">
+            <h3>Account Settings</h3>
+            
+            <form id="profile-form" class="profile-form">
+              <div class="form-group">
+                <label for="username">Username</label>
+                <input 
+                  type="text" 
+                  id="username" 
+                  name="username" 
+                  value={profile?.username || ''} 
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input 
+                  type="text" 
+                  id="fullName" 
+                  name="fullName" 
+                  value={profile?.full_name || ''} 
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input 
+                  type="email" 
+                  id="email" 
+                  name="email" 
+                  value={user?.email || ''} 
+                  disabled 
+                />
+                <small>Email cannot be changed</small>
+              </div>
+              
+              <div id="update-message" class="update-message"></div>
+              
+              <button type="submit" class="update-btn">Update Profile</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { supabase } from '../lib/supabase';
+  
+  // Handle logout
+  document.getElementById('logout')?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/auth';
+  });
+  
+  // Handle profile update
+  document.getElementById('profile-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const fullName = document.getElementById('fullName').value;
+    const updateMessage = document.getElementById('update-message');
+    
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      // Update profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username,
+          full_name: fullName
+        })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      updateMessage.textContent = 'Profile updated successfully!';
+      updateMessage.className = 'update-message success';
+      
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        updateMessage.textContent = '';
+        updateMessage.className = 'update-message';
+      }, 3000);
+      
+    } catch (error) {
+      updateMessage.textContent = `Error: ${error.message}`;
+      updateMessage.className = 'update-message error';
+    }
+  });
+</script>
+
+<style>
+  header {
+    background-color: #4f46e5;
+    color: white;
+    padding: 1rem 0;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  nav ul {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  nav a {
+    color: white;
+    text-decoration: none;
+  }
+  
+  nav a.active {
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  
+  nav a:hover {
+    text-decoration: underline;
+  }
+  
+  #logout {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border-radius: 4px;
+    width: auto;
+    margin-top: 0;
+  }
+  
+  #logout:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  main {
+    padding: 2rem 0;
+  }
+  
+  .profile-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  
+  .profile-header {
+    display: flex;
+    align-items: center;
+    padding: 2rem;
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .profile-avatar {
+    margin-right: 1.5rem;
+  }
+  
+  .profile-avatar img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  
+  .avatar-placeholder {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #4f46e5;
+    color: white;
+    font-size: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .profile-info h2 {
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .username {
+    color: #6b7280;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .admin-badge {
+    display: inline-block;
+    background-color: #4f46e5;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  
+  .profile-content {
+    padding: 2rem;
+  }
+  
+  .profile-section {
+    margin-bottom: 2.5rem;
+  }
+  
+  .profile-section:last-child {
+    margin-bottom: 0;
+  }
+  
+  .profile-section h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: #111827;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.5rem;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+  
+  .stat-card {
+    background-color: #f9fafb;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #4f46e5;
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+  
+  .challenges-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+  
+  .challenge-item {
+    background-color: #f9fafb;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .challenge-item h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: #4f46e5;
+  }
+  
+  .challenge-dates {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .no-challenges {
+    background-color: #f9fafb;
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .btn {
+    display: inline-block;
+    background-color: #4f46e5;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    margin-top: 1rem;
+  }
+  
+  .btn:hover {
+    background-color: #4338ca;
+  }
+  
+  .profile-form .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .profile-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+  }
+  
+  .profile-form input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+  
+  .profile-form input:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+  }
+  
+  .profile-form small {
+    display: block;
+    color: #6b7280;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+  }
+  
+  .update-btn {
+    background-color: #4f46e5;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .update-btn:hover {
+    background-color: #4338ca;
+  }
+  
+  .update-message {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+  
+  .update-message.success {
+    background-color: #dcfce7;
+    color: #166534;
+  }
+  
+  .update-message.error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+  }
+</style>

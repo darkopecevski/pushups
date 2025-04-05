@@ -1,0 +1,264 @@
+---
+// src/pages/challenges.astro
+import Layout from '../layouts/Layout.astro';
+import ChallengeList from '../components/ChallengeList';
+import ChallengeForm from '../components/ChallengeForm';
+import { supabase } from '../lib/supabase';
+
+// Check if user is authenticated
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get('sb-access-token');
+const refreshToken = cookies.get('sb-refresh-token');
+
+let user = null;
+let profile = null;
+
+if (accessToken && refreshToken) {
+  const { data } = await supabase.auth.setSession({
+    access_token: accessToken.value,
+    refresh_token: refreshToken.value
+  });
+  
+  user = data.user;
+  
+  // Get user profile to check admin status
+  if (user) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+      
+    profile = profileData;
+  }
+} else {
+  return redirect('/auth');
+}
+---
+
+<Layout title="Challenges - Pushups App">
+  <header>
+    <div class="container">
+      <h1>Pushups Challenge</h1>
+      <nav>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/challenges" class="active">Challenges</a></li>
+          <li><a href="/profile">Profile</a></li>
+          <li>
+            <button id="logout">Logout</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h2>Challenges</h2>
+      
+      {profile?.is_admin && (
+        <ChallengeForm client:load />
+      )}
+      
+      <ChallengeList client:load />
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { supabase } from '../lib/supabase';
+  
+  document.getElementById('logout')?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/auth';
+  });
+</script>
+
+<style>
+  header {
+    background-color: #4f46e5;
+    color: white;
+    padding: 1rem 0;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  nav ul {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  nav a {
+    color: white;
+    text-decoration: none;
+  }
+  
+  nav a.active {
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  
+  nav a:hover {
+    text-decoration: underline;
+  }
+  
+  #logout {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border-radius: 4px;
+    width: auto;
+    margin-top: 0;
+  }
+  
+  #logout:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  main {
+    padding: 2rem 0;
+  }
+  
+  h2 {
+    margin-top: 0;
+  }
+  
+  /* Challenge list styles */
+  .challenges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  
+  .challenge-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .challenge-card h3 {
+    margin-top: 0;
+    color: #4f46e5;
+  }
+  
+  .challenge-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+  }
+  
+  .challenge-actions {
+    margin-top: 1rem;
+  }
+  
+  .join-btn, .leave-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    width: 100%;
+  }
+  
+  .join-btn {
+    background-color: #4f46e5;
+    color: white;
+    border: none;
+  }
+  
+  .join-btn:hover {
+    background-color: #4338ca;
+  }
+  
+  .leave-btn {
+    background-color: white;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+  }
+  
+  .leave-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  
+  /* Challenge form styles */
+  .challenge-form {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  
+  .form-group input, 
+  .form-group textarea,
+  .form-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  
+  .create-btn {
+    background-color: #4f46e5;
+    color: white;
+    border: none;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 1rem;
+  }
+  
+  .create-btn:hover {
+    background-color: #4338ca;
+  }
+  
+  .create-btn:disabled {
+    background-color: #a5a5a5;
+    cursor: not-allowed;
+  }
+  
+  .error {
+    color: #ef4444;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+  }
+</style>
