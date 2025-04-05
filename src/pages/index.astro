@@ -1,6 +1,10 @@
 ---
 // src/pages/index.astro
 import Layout from '../layouts/Layout.astro';
+import ExerciseTracker from '../components/ExerciseTracker';
+import WeeklyStreak from '../components/WeeklyStreak';
+import WelcomeBanner from '../components/WelcomeBanner';
+import GettingStartedGuide from '../components/GettingStartedGuide';
 import { supabase } from '../lib/supabase';
 
 // Check if user is authenticated
@@ -10,6 +14,9 @@ const accessToken = cookies.get('sb-access-token');
 const refreshToken = cookies.get('sb-refresh-token');
 
 let user = null;
+let profile = null;
+let activeChallenges = [];
+let availableChallenges = [];
 
 if (accessToken && refreshToken) {
   const { data } = await supabase.auth.setSession({
@@ -22,22 +29,67 @@ if (accessToken && refreshToken) {
   return redirect('/auth');
 }
 
-// Get user profile
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('*')
-  .eq('id', user.id)
-  .single();
+// Get user profile and challenges
+if (user) {
+  // Get user profile
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+    
+  profile = profileData;
+  
+  // Get current date for filtering active challenges
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Get challenges the user has joined
+  const { data: participantData } = await supabase
+    .from('challenge_participants')
+    .select(`
+      challenge_id,
+      challenges:challenge_id (
+        id, title, description, exercise_type, goal_type, goal_value, start_date, end_date
+      )
+    `)
+    .eq('user_id', user.id);
+    
+  // Filter for active challenges (started but not ended)
+  const userChallengeIds = [];
+  
+  if (participantData) {
+    activeChallenges = participantData
+      .filter(p => p.challenges.start_date <= today && p.challenges.end_date >= today)
+      .map(p => p.challenges);
+      
+    // Store all user challenge IDs for filtering available challenges
+    userChallengeIds.push(...participantData.map(p => p.challenges.id));
+  }
+  
+  // Get available challenges that user hasn't joined yet
+  const { data: allChallenges } = await supabase
+    .from('challenges')
+    .select('*')
+    .gte('end_date', today) // Only show challenges that haven't ended
+    .order('start_date', { ascending: true });
+    
+  if (allChallenges) {
+    availableChallenges = allChallenges
+      .filter(challenge => !userChallengeIds.includes(challenge.id))
+      .slice(0, 3); // Limit to 3 challenges for the homepage
+  }
+}
 ---
 
-<Layout title="Pushups App">
+<Layout title="Pushups App - Your Fitness Dashboard">
   <header>
     <div class="container">
       <h1>Pushups Challenge</h1>
       <nav>
         <ul>
-          <li><a href="/">Home</a></li>
+          <li><a href="/" class="active">Home</a></li>
           <li><a href="/challenges">Challenges</a></li>
+          <li><a href="/leaderboard">Leaderboard</a></li>
           <li><a href="/profile">Profile</a></li>
           <li>
             <button id="logout">Logout</button>
@@ -49,32 +101,174 @@ const { data: profile } = await supabase
 
   <main>
     <div class="container">
-      <h2>Welcome, {profile?.username || 'User'}!</h2>
-      <p>Get started with your fitness challenges here.</p>
+      {activeChallenges.length === 0 && (
+        <WelcomeBanner client:load username={profile?.username} />
+      )}
       
-      <div class="dashboard">
-        <div class="dashboard-card">
-          <h3>Your Active Challenges</h3>
-          <p>You don't have any active challenges yet.</p>
-          <a href="/challenges" class="btn">Find Challenges</a>
+      <div class="welcome-section">
+        <h2>Welcome, {profile?.username || 'Fitness Enthusiast'}!</h2>
+        <p>Track your progress and join new challenges to stay motivated.</p>
+      </div>
+      
+      <div class="dashboard-grid">
+        <div class="main-section">
+          {activeChallenges.length > 0 ? (
+            <div class="active-challenges">
+              <h3>Your Active Challenges</h3>
+              <p>Log your daily exercises to stay on track:</p>
+              
+              <ExerciseTracker client:load />
+              
+              <div class="weekly-activity">
+                <WeeklyStreak client:load />
+              </div>
+            </div>
+          ) : (
+            <div class="no-challenges">
+              <h3>No Active Challenges</h3>
+              <p>You haven't joined any active challenges yet. Browse available challenges and start your fitness journey today!</p>
+              <a href="/challenges" class="primary-btn">Find Challenges</a>
+              
+              <div class="getting-started-container">
+                <GettingStartedGuide client:load />
+              </div>
+            </div>
+          )}
         </div>
         
-        <div class="dashboard-card">
-          <h3>Your Progress</h3>
-          <p>Start a challenge to track your progress.</p>
+        <div class="sidebar">
+          <div class="available-challenges">
+            <h3>Discover Challenges</h3>
+            
+            {availableChallenges.length > 0 ? (
+              <div class="challenge-list">
+                {availableChallenges.map(challenge => (
+                  <div class="challenge-card">
+                    <h4>{challenge.title}</h4>
+                    <p class="challenge-dates">
+                      {new Date(challenge.start_date).toLocaleDateString()} - {new Date(challenge.end_date).toLocaleDateString()}
+                    </p>
+                    <p class="challenge-exercise">
+                      <strong>{challenge.goal_value}</strong> {challenge.exercise_type} ({challenge.goal_type.replace('_', ' ')})
+                    </p>
+                    <button class="join-btn" data-id={challenge.id}>Join Challenge</button>
+                  </div>
+                ))}
+                
+                <a href="/challenges" class="view-all">View All Challenges →</a>
+              </div>
+            ) : (
+              <p>No new challenges available at the moment.</p>
+            )}
+          </div>
+          
+          <div class="quick-stats">
+            <h3>Your Stats</h3>
+            <div class="stats-container" id="stats-container">
+              <p>Loading your stats...</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </main>
 </Layout>
 
-<script>
+<script define:vars={{ userId: user?.id }}>
   import { supabase } from '../lib/supabase';
   
+  // Handle logout
   document.getElementById('logout')?.addEventListener('click', async () => {
     await supabase.auth.signOut();
     window.location.href = '/auth';
   });
+  
+  // Handle join challenge buttons
+  document.querySelectorAll('.join-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const challengeId = button.getAttribute('data-id');
+      
+      try {
+        const { error } = await supabase
+          .from('challenge_participants')
+          .insert([
+            { challenge_id: challengeId, user_id: userId }
+          ]);
+          
+        if (error) throw error;
+        
+        // Reload page to show updated challenges
+        window.location.reload();
+      } catch (err) {
+        console.error('Error joining challenge:', err);
+        alert('Error joining challenge: ' + err.message);
+      }
+    });
+  });
+  
+  // Fetch quick stats
+  const fetchQuickStats = async () => {
+    const statsContainer = document.getElementById('stats-container');
+    
+    try {
+      // Get total exercise count
+      const { data: exerciseData, error: exerciseError } = await supabase
+        .from('exercise_logs')
+        .select('exercise_count')
+        .eq('user_id', userId);
+        
+      if (exerciseError) throw exerciseError;
+      
+      // Calculate total exercises
+      const totalExercises = exerciseData?.reduce((sum, log) => sum + log.exercise_count, 0) || 0;
+      
+      // Get last 7 days logs
+      const last7Days = new Date();
+      last7Days.setDate(last7Days.getDate() - 7);
+      const last7DaysFormatted = last7Days.toISOString().split('T')[0];
+      
+      const { data: recentLogs, error: recentLogsError } = await supabase
+        .from('exercise_logs')
+        .select('log_date')
+        .eq('user_id', userId)
+        .gte('log_date', last7DaysFormatted);
+        
+      if (recentLogsError) throw recentLogsError;
+      
+      // Calculate active days in last week
+      const activeDaysLastWeek = new Set(recentLogs?.map(log => log.log_date)).size || 0;
+      
+      // Get joined challenges count
+      const { count: challengeCount, error: challengeError } = await supabase
+        .from('challenge_participants')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId);
+        
+      if (challengeError) throw challengeError;
+      
+      // Update stats container
+      statsContainer.innerHTML = `
+        <div class="stat-item">
+          <span class="stat-value">${totalExercises}</span>
+          <span class="stat-label">Total Exercises</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">${activeDaysLastWeek}</span>
+          <span class="stat-label">Active Days (Last 7)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">${challengeCount || 0}</span>
+          <span class="stat-label">Challenges Joined</span>
+        </div>
+      `;
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+      statsContainer.innerHTML = '<p>Failed to load stats. Please refresh the page.</p>';
+    }
+  };
+  
+  // Load stats on page load
+  fetchQuickStats();
 </script>
 
 <style>
@@ -109,6 +303,11 @@ const { data: profile } = await supabase
     text-decoration: none;
   }
   
+  nav a.active {
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  
   nav a:hover {
     text-decoration: underline;
   }
@@ -133,40 +332,147 @@ const { data: profile } = await supabase
     padding: 2rem 0;
   }
   
-  h2 {
+  .welcome-section {
+    margin-bottom: 2rem;
+  }
+  
+  .welcome-section h2 {
     margin-top: 0;
+    margin-bottom: 0.5rem;
   }
   
-  .dashboard {
+  .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-top: 2rem;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
   }
   
-  .dashboard-card {
+  @media (max-width: 768px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .main-section, .sidebar > div {
     background-color: white;
     border-radius: 8px;
     padding: 1.5rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
   }
   
-  .dashboard-card h3 {
+  .sidebar > div:last-child {
+    margin-bottom: 0;
+  }
+  
+  h3 {
     margin-top: 0;
+    margin-bottom: 1rem;
     color: #4f46e5;
   }
   
-  .btn {
+  .no-challenges {
+    text-align: center;
+    padding: 2rem;
+  }
+  
+  .getting-started-container {
+    margin-top: 2rem;
+    text-align: left;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .primary-btn, .join-btn {
     display: inline-block;
     background-color: #4f46e5;
     color: white;
-    padding: 0.5rem 1rem;
+    border: none;
+    padding: 0.75rem 1.5rem;
     border-radius: 4px;
+    font-size: 1rem;
     text-decoration: none;
-    margin-top: 1rem;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.2s;
   }
   
-  .btn:hover {
+  .primary-btn:hover, .join-btn:hover {
     background-color: #4338ca;
+  }
+  
+  .challenge-card {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .challenge-card h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .challenge-dates {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+  }
+  
+  .challenge-exercise {
+    margin-bottom: 1rem;
+  }
+  
+  .join-btn {
+    width: 100%;
+    font-size: 0.875rem;
+    padding: 0.5rem 0;
+  }
+  
+  .view-all {
+    display: block;
+    text-align: center;
+    color: #4f46e5;
+    margin-top: 1rem;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .view-all:hover {
+    text-decoration: underline;
+  }
+  
+  .stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+  }
+  
+  .stat-item {
+    background-color: #f9fafb;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+  }
+  
+  .stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #4f46e5;
+    margin-bottom: 0.25rem;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+  
+  .weekly-activity {
+    margin-top: 2rem;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    overflow: hidden;
   }
 </style>

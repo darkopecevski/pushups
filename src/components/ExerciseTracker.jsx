@@ -8,7 +8,7 @@ export default function ExerciseTracker() {
   const [currentUser, setCurrentUser] = useState(null);
   const [todayLogs, setTodayLogs] = useState({});
   const [error, setError] = useState(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState({});
   
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
@@ -85,8 +85,7 @@ export default function ExerciseTracker() {
         { 
           event: '*', 
           schema: 'public', 
-          table: 'exercise_logs',
-          filter: `user_id=eq.${currentUser?.id}` 
+          table: 'exercise_logs'
         }, 
         payload => {
           if (payload.new.log_date === today) {
@@ -114,7 +113,7 @@ export default function ExerciseTracker() {
   const saveLog = async (challengeId) => {
     try {
       setError(null);
-      setSaveSuccess(false);
+      setSaveSuccess(prev => ({ ...prev, [challengeId]: false }));
       
       if (!currentUser) return;
       
@@ -159,8 +158,10 @@ export default function ExerciseTracker() {
       
       if (error) throw error;
       
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setSaveSuccess(prev => ({ ...prev, [challengeId]: true }));
+      setTimeout(() => {
+        setSaveSuccess(prev => ({ ...prev, [challengeId]: false }));
+      }, 3000);
       
     } catch (err) {
       console.error('Error saving log:', err);
@@ -168,7 +169,7 @@ export default function ExerciseTracker() {
     }
   };
   
-  if (loading) return <div>Loading your challenges...</div>;
+  if (loading) return <div className="loading">Loading your challenges...</div>;
   
   if (userChallenges.length === 0) {
     return (
@@ -182,80 +183,279 @@ export default function ExerciseTracker() {
   
   return (
     <div className="exercise-tracker">
-      <h2>Today's Exercise Log</h2>
-      <p className="date-display">Date: {new Date().toLocaleDateString()}</p>
+      <p className="date-display">Today: <strong>{new Date().toLocaleDateString()}</strong></p>
       
-      {error && <div className="error">{error}</div>}
-      {saveSuccess && <div className="success">Exercise log saved successfully!</div>}
+      {error && <div className="error-message">{error}</div>}
       
       <div className="challenges-list">
         {userChallenges.map(challenge => (
           <div key={challenge.id} className="challenge-log-card">
-            <h3>{challenge.title}</h3>
-            <p>Exercise: {challenge.exercise_type}</p>
-            
-            {challenge.goal_type === 'daily_count' && (
-              <p className="goal-display">
-                Daily Goal: {challenge.goal_value} {challenge.exercise_type}
-              </p>
-            )}
-            
-            <div className="log-input">
-              <label htmlFor={`count-${challenge.id}`}>
-                Today's {challenge.exercise_type} count:
-              </label>
-              <div className="count-control">
-                <button 
-                  onClick={() => handleCountChange(
-                    challenge.id, 
-                    Math.max(0, (todayLogs[challenge.id] || 0) - 1)
-                  )}
-                  className="count-btn"
-                >
-                  -
-                </button>
-                <input
-                  id={`count-${challenge.id}`}
-                  type="number"
-                  min="0"
-                  value={todayLogs[challenge.id] || 0}
-                  onChange={(e) => handleCountChange(challenge.id, e.target.value)}
-                />
-                <button 
-                  onClick={() => handleCountChange(
-                    challenge.id, 
-                    (todayLogs[challenge.id] || 0) + 1
-                  )}
-                  className="count-btn"
-                >
-                  +
-                </button>
-              </div>
+            <div className="challenge-info">
+              <h4>{challenge.title}</h4>
+              <span className="exercise-type">{challenge.exercise_type}</span>
             </div>
             
-            <button 
-              onClick={() => saveLog(challenge.id)}
-              className="save-btn"
-            >
-              Save
-            </button>
+            <div className="log-content">
+              <div className="log-input">
+                <label htmlFor={`count-${challenge.id}`}>
+                  Today's count:
+                </label>
+                <div className="count-control">
+                  <button 
+                    onClick={() => handleCountChange(
+                      challenge.id, 
+                      Math.max(0, (todayLogs[challenge.id] || 0) - 1)
+                    )}
+                    className="count-btn"
+                    aria-label="Decrease count"
+                  >
+                    -
+                  </button>
+                  <input
+                    id={`count-${challenge.id}`}
+                    type="number"
+                    min="0"
+                    value={todayLogs[challenge.id] || 0}
+                    onChange={(e) => handleCountChange(challenge.id, e.target.value)}
+                  />
+                  <button 
+                    onClick={() => handleCountChange(
+                      challenge.id, 
+                      (todayLogs[challenge.id] || 0) + 1
+                    )}
+                    className="count-btn"
+                    aria-label="Increase count"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => saveLog(challenge.id)}
+                className="save-btn"
+              >
+                Save
+              </button>
+            </div>
+            
+            {saveSuccess[challenge.id] && (
+              <div className="save-success">Saved successfully!</div>
+            )}
             
             {challenge.goal_type === 'daily_count' && (
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill"
-                  style={{ 
-                    width: `${Math.min(100, ((todayLogs[challenge.id] || 0) / challenge.goal_value) * 100)}%` 
-                  }}
-                />
-                <span className="progress-text">
-                  {todayLogs[challenge.id] || 0} / {challenge.goal_value}
-                </span>
+              <div className="progress-section">
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill"
+                    style={{ 
+                      width: `${Math.min(100, ((todayLogs[challenge.id] || 0) / challenge.goal_value) * 100)}%` 
+                    }}
+                  />
+                </div>
+                <div className="progress-text">
+                  <span className="current">{todayLogs[challenge.id] || 0}</span>
+                  <span className="separator">/</span>
+                  <span className="goal">{challenge.goal_value}</span>
+                </div>
               </div>
             )}
           </div>
         ))}
       </div>
+      
+      <style jsx>{`
+        .exercise-tracker {
+          margin-top: 1rem;
+        }
+        
+        .date-display {
+          margin-bottom: 1rem;
+          color: #4b5563;
+        }
+        
+        .error-message {
+          background-color: #fee2e2;
+          color: #b91c1c;
+          padding: 0.75rem;
+          border-radius: 4px;
+          margin-bottom: 1rem;
+        }
+        
+        .save-success {
+          background-color: #dcfce7;
+          color: #166534;
+          padding: 0.5rem;
+          border-radius: 4px;
+          margin-top: 0.5rem;
+          font-size: 0.875rem;
+          text-align: center;
+        }
+        
+        .challenges-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        
+        .challenge-log-card {
+          background-color: #f9fafb;
+          border-radius: 8px;
+          padding: 1rem;
+          border: 1px solid #e5e7eb;
+        }
+        
+        .challenge-info {
+          margin-bottom: 0.75rem;
+        }
+        
+        .challenge-info h4 {
+          margin: 0 0 0.25rem 0;
+        }
+        
+        .exercise-type {
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
+        
+        .log-content {
+          display: flex;
+          align-items: flex-end;
+          gap: 1rem;
+        }
+        
+        .log-input {
+          flex: 1;
+        }
+        
+        .log-input label {
+          display: block;
+          font-size: 0.875rem;
+          margin-bottom: 0.5rem;
+        }
+        
+        .count-control {
+          display: flex;
+          align-items: center;
+        }
+        
+        .count-btn {
+          background-color: #e5e7eb;
+          border: none;
+          width: 2rem;
+          height: 2rem;
+          font-size: 1.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        
+        .count-btn:first-child {
+          border-radius: 4px 0 0 4px;
+        }
+        
+        .count-btn:last-child {
+          border-radius: 0 4px 4px 0;
+        }
+        
+        .count-control input {
+          width: 4rem;
+          height: 2rem;
+          border: 1px solid #e5e7eb;
+          text-align: center;
+          font-size: 1rem;
+        }
+        
+        .save-btn {
+          background-color: #4f46e5;
+          color: white;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          height: 2rem;
+        }
+        
+        .save-btn:hover {
+          background-color: #4338ca;
+        }
+        
+        .progress-section {
+          margin-top: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        
+        .progress-bar {
+          flex: 1;
+          height: 0.5rem;
+          background-color: #e5e7eb;
+          border-radius: 9999px;
+          overflow: hidden;
+        }
+        
+        .progress-fill {
+          height: 100%;
+          background-color: #4f46e5;
+          border-radius: 9999px;
+        }
+        
+        .progress-text {
+          font-size: 0.875rem;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+        
+        .current {
+          color: #4f46e5;
+        }
+        
+        .separator {
+          color: #9ca3af;
+        }
+        
+        .goal {
+          color: #6b7280;
+        }
+        
+        .loading {
+          padding: 2rem;
+          text-align: center;
+          color: #6b7280;
+        }
+        
+        .no-challenges {
+          padding: 2rem;
+          text-align: center;
+        }
+        
+        .btn {
+          display: inline-block;
+          background-color: #4f46e5;
+          color: white;
+          text-decoration: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 4px;
+          margin-top: 1rem;
+        }
+        
+        @media (max-width: 640px) {
+          .log-content {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          
+          .save-btn {
+            margin-top: 0.5rem;
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }
