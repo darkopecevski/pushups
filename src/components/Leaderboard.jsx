@@ -7,6 +7,17 @@ export default function Leaderboard({ challengeId }) {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [timeFrame, setTimeFrame] = useState('today'); // 'today', 'week', 'month', 'all'
   const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  
+  useEffect(() => {
+    // Get current user
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    
+    fetchCurrentUser();
+  }, []);
   
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -14,53 +25,62 @@ export default function Leaderboard({ challengeId }) {
         setLoading(true);
         setError(null);
         
-        let startDate;
-        const today = new Date();
+        // Get today's date as YYYY-MM-DD
+        const todayStr = new Date().toISOString().split('T')[0];
         
-        // Determine date range based on time frame
-        if (timeFrame === 'today') {
-          startDate = new Date(today);
-          startDate.setHours(0, 0, 0, 0);
-        } else if (timeFrame === 'week') {
-          startDate = new Date(today);
-          startDate.setDate(today.getDate() - 7);
-        } else if (timeFrame === 'month') {
-          startDate = new Date(today);
-          startDate.setMonth(today.getMonth() - 1);
-        }
-        
-        // Format date for query
-        const formattedStartDate = startDate ? startDate.toISOString().split('T')[0] : null;
-        
-        // Build query
+        // Prepare query
         let query = supabase
           .from('exercise_logs')
           .select(`
+            id,
             user_id,
+            challenge_id,
             exercise_count,
             log_date,
             profiles:user_id (username, avatar_url)
-          `)
-          .order('exercise_count', { ascending: false });
-          
+          `);
+        
         // Add challenge filter if provided
         if (challengeId) {
           query = query.eq('challenge_id', challengeId);
         }
         
-        // Add date filter if not 'all'
-        if (timeFrame !== 'all' && formattedStartDate) {
-          query = query.gte('log_date', formattedStartDate);
+        // Apply time frame filter
+        if (timeFrame === 'today') {
+          // Strict equality for today's date only
+          query = query.eq('log_date', todayStr);
+        } 
+        else if (timeFrame === 'week') {
+          // Get date 7 days ago
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          const weekAgoStr = weekAgo.toISOString().split('T')[0];
+          
+          query = query.gte('log_date', weekAgoStr)
+                       .lte('log_date', todayStr);
+        } 
+        else if (timeFrame === 'month') {
+          // Get date 30 days ago
+          const monthAgo = new Date();
+          monthAgo.setDate(monthAgo.getDate() - 30);
+          const monthAgoStr = monthAgo.toISOString().split('T')[0];
+          
+          query = query.gte('log_date', monthAgoStr)
+                       .lte('log_date', todayStr);
         }
+        // For 'all', no date filter is applied
         
-        const { data, error } = await query;
+        // Execute query
+        const { data, error: fetchError } = await query;
         
-        if (error) throw error;
+        if (fetchError) throw fetchError;
         
-        // Process data to aggregate by user
+        console.log(`Leaderboard data for ${timeFrame}:`, data);
+
+        // Process and aggregate results by user
         const userTotals = {};
         
-        data.forEach(log => {
+        data?.forEach(log => {
           const userId = log.user_id;
           
           if (!userTotals[userId]) {
@@ -68,14 +88,17 @@ export default function Leaderboard({ challengeId }) {
               userId,
               username: log.profiles?.username || 'Anonymous User',
               avatarUrl: log.profiles?.avatar_url,
-              totalCount: 0
+              totalCount: 0,
+              isCurrentUser: currentUser?.id === userId,
+              logDates: [] // Track which dates were included
             };
           }
           
           userTotals[userId].totalCount += log.exercise_count;
+          userTotals[userId].logDates.push(log.log_date);
         });
         
-        // Convert to array and sort
+        // Convert to array and sort by exercise count
         const sortedLeaderboard = Object.values(userTotals)
           .sort((a, b) => b.totalCount - a.totalCount)
           .slice(0, 10); // Top 10
@@ -90,7 +113,27 @@ export default function Leaderboard({ challengeId }) {
     };
     
     fetchLeaderboard();
-  }, [challengeId, timeFrame]);
+    
+    // Subscribe to real-time updates for exercise_logs
+    const exerciseLogsSubscription = supabase
+      .channel('public:exercise_logs')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'exercise_logs'
+        }, 
+        () => {
+          // Refresh data when changes occur
+          fetchLeaderboard();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(exerciseLogsSubscription);
+    };
+  }, [challengeId, timeFrame, currentUser]);
   
   const renderAvatarOrInitial = (user) => {
     if (user.avatarUrl) {
@@ -114,9 +157,20 @@ export default function Leaderboard({ challengeId }) {
     }
   };
   
+  const getTimeFrameLabel = () => {
+    switch(timeFrame) {
+      case 'today': return "Today's Leaderboard";
+      case 'week': return "This Week's Leaderboard";
+      case 'month': return "This Month's Leaderboard";
+      case 'all': return "All-Time Leaderboard";
+      default: return "Leaderboard";
+    }
+  };
+  
   return (
     <div className="leaderboard">
       <div className="leaderboard-header">
+        <div className="timeframe-label">{getTimeFrameLabel()}</div>
         <div className="time-filter">
           <button 
             onClick={() => setTimeFrame('today')}
@@ -157,13 +211,16 @@ export default function Leaderboard({ challengeId }) {
       ) : leaderboardData.length === 0 ? (
         <div className="empty-state">
           <p>No exercise data available for this time period.</p>
+          {timeFrame === 'today' && (
+            <p className="motivational-message">Be the first to log your exercises today!</p>
+          )}
         </div>
       ) : (
         <div className="leaderboard-table">
           {leaderboardData.map((user, index) => (
             <div 
               key={user.userId} 
-              className={`leaderboard-row ${index < 3 ? `top-${index+1}` : ''}`}
+              className={`leaderboard-row ${index < 3 ? `top-${index+1}` : ''} ${user.isCurrentUser ? 'current-user' : ''}`}
             >
               <div className="rank-column">
                 {index < 3 ? (
@@ -175,7 +232,7 @@ export default function Leaderboard({ challengeId }) {
               
               <div className="user-column">
                 {renderAvatarOrInitial(user)}
-                <span className="username">{user.username}</span>
+                <span className="username">{user.username}{user.isCurrentUser ? ' (You)' : ''}</span>
               </div>
               
               <div className="count-column">
@@ -199,10 +256,18 @@ export default function Leaderboard({ challengeId }) {
           border-bottom: 1px solid var(--color-border);
         }
         
+        .timeframe-label {
+          font-weight: 600;
+          font-size: 1rem;
+          margin-bottom: var(--spacing-sm);
+          color: var(--color-text);
+        }
+        
         .time-filter {
           display: flex;
           gap: var(--spacing-xs);
           flex-wrap: wrap;
+          margin-top: var(--spacing-md);
         }
         
         .filter-btn {
@@ -230,6 +295,12 @@ export default function Leaderboard({ challengeId }) {
           padding: var(--spacing-xl);
           text-align: center;
           color: var(--color-text-light);
+        }
+        
+        .motivational-message {
+          font-weight: 500;
+          color: var(--color-primary);
+          margin-top: var(--spacing-sm);
         }
         
         .loader {
@@ -264,6 +335,10 @@ export default function Leaderboard({ challengeId }) {
         
         .leaderboard-row:hover {
           background-color: var(--color-background);
+        }
+        
+        .leaderboard-row.current-user {
+          background-color: rgba(79, 70, 229, 0.05);
         }
         
         .top-1 {

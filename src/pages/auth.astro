@@ -82,6 +82,9 @@ import Layout from '../layouts/Layout.astro';
           <button type="submit" class="btn btn-primary btn-block">
             ${isLogin ? 'Login' : 'Sign Up'}
           </button>
+          <div class="forgot-password">
+            <a href="/reset-password" class="forgot-password-link">Forgot password?</a>
+          </div>
         </form>
         
         <div class="auth-toggle">
@@ -272,6 +275,22 @@ import Layout from '../layouts/Layout.astro';
     min-height: 60px;
     margin-bottom: var(--spacing-md);
   }
+  .forgot-password {
+  text-align: right;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+.forgot-password-link {
+  font-size: 0.875rem;
+  color: var(--color-text-light);
+  text-decoration: none;
+}
+
+.forgot-password-link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
 </style>
 </document_content>
 </invoke>

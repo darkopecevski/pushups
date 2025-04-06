@@ -5,6 +5,7 @@ import Header from '../components/Header.astro';
 import ExerciseTracker from '../components/ExerciseTracker';
 import WelcomeBanner from '../components/WelcomeBanner';
 import WeeklyStreak from '../components/WeeklyStreak';
+import DailyCompletions from '../components/DailyCompletions';
 import { supabase } from '../lib/supabase';
 
 // Check if user is authenticated
@@ -107,6 +108,10 @@ if (user) {
             <h2>Activity Streak</h2>
             
             <WeeklyStreak client:load userId={user?.id} />
+          </section>
+          
+          <section class="section daily-champions">
+            <DailyCompletions client:load />
           </section>
         </div>
         
@@ -322,6 +327,11 @@ if (user) {
     margin-bottom: var(--spacing-md);
   }
   
+  .daily-champions {
+    /* No top margin because the component has its own header */
+    margin-top: 0;
+  }
+  
   .challenge-suggestions {
     display: flex;
     flex-direction: column;
@@ -495,4 +505,3 @@ if (user) {
     }
   }
 </style>
-</document_content>

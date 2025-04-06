@@ -29,8 +29,8 @@ if (accessToken && refreshToken) {
     const { data: challengesData } = await supabase
       .from('challenges')
       .select('id, title')
-      .lte('start_date', today)
-      .gte('end_date', today)
+      .lte('start_date', today)  // Challenge has started
+      .gte('end_date', today)    // Challenge has not ended
       .order('title');
       
     challenges = challengesData || [];
@@ -76,6 +76,8 @@ if (accessToken && refreshToken) {
   const challengeSelect = document.getElementById('challenge-select');
   const leaderboardContainer = document.getElementById('leaderboard-container');
   
+  let currentComponent = null;
+  
   challengeSelect?.addEventListener('change', async () => {
     const selectedChallengeId = challengeSelect.value;
     
@@ -84,32 +86,68 @@ if (accessToken && refreshToken) {
       leaderboardContainer.innerHTML = '<div class="loading-placeholder"><div class="loader"></div><p>Loading leaderboard...</p></div>';
     }
     
-    // Short delay to ensure the DOM updates
-    setTimeout(() => {
+    // Create new component with selected challenge ID
+    if (typeof window.Astro !== 'undefined') {
+      try {
+        // If Astro is available, use its API to render the component
+        if (currentComponent) {
+          currentComponent.unmount();
+        }
+        
+        const props = selectedChallengeId ? { challengeId: selectedChallengeId } : {};
+        
+        if (leaderboardContainer) {
+          leaderboardContainer.innerHTML = '';
+          
+          // Dynamically import the Leaderboard component
+          const { default: LeaderboardComponent } = await import('../components/Leaderboard');
+          
+          // Render it to the container
+          const root = document.createElement('div');
+          leaderboardContainer.appendChild(root);
+          
+          // Create a new React component instance
+          if (window.React && window.ReactDOM) {
+            currentComponent = window.ReactDOM.render(
+              window.React.createElement(LeaderboardComponent, props),
+              root
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Error rendering component:', error);
+        fallbackRender();
+      }
+    } else {
+      fallbackRender();
+    }
+    
+    // Fallback to full page reload
+    function fallbackRender() {
       // Create new component with selected challenge ID
-      const leaderboardComponent = document.createElement('astro-island');
-      leaderboardComponent.setAttribute('client', 'load');
-      
-      if (selectedChallengeId) {
-        leaderboardComponent.setAttribute('component-url', '/src/components/Leaderboard');
-        leaderboardComponent.setAttribute('component-export', 'default');
-        leaderboardComponent.setAttribute('renderer-url', '/node_modules/@astrojs/react/client.js');
-        leaderboardComponent.setAttribute('props', JSON.stringify({
-          challengeId: selectedChallengeId
-        }));
-      } else {
-        leaderboardComponent.setAttribute('component-url', '/src/components/Leaderboard');
-        leaderboardComponent.setAttribute('component-export', 'default');
-        leaderboardComponent.setAttribute('renderer-url', '/node_modules/@astrojs/react/client.js');
-        leaderboardComponent.setAttribute('props', '{}');
-      }
-      
-      // Replace the placeholder
       if (leaderboardContainer) {
+        const astroIsland = document.createElement('astro-island');
+        astroIsland.setAttribute('client', 'load');
+        
+        if (selectedChallengeId) {
+          astroIsland.setAttribute('component-url', '/src/components/Leaderboard');
+          astroIsland.setAttribute('component-export', 'default');
+          astroIsland.setAttribute('renderer-url', '/node_modules/@astrojs/react/client.js');
+          astroIsland.setAttribute('props', JSON.stringify({
+            challengeId: selectedChallengeId
+          }));
+        } else {
+          astroIsland.setAttribute('component-url', '/src/components/Leaderboard');
+          astroIsland.setAttribute('component-export', 'default');
+          astroIsland.setAttribute('renderer-url', '/node_modules/@astrojs/react/client.js');
+          astroIsland.setAttribute('props', '{}');
+        }
+        
+        // Replace the placeholder
         leaderboardContainer.innerHTML = '';
-        leaderboardContainer.appendChild(leaderboardComponent);
+        leaderboardContainer.appendChild(astroIsland);
       }
-    }, 100);
+    }
   });
 </script>
 
