@@ -3,6 +3,7 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Leaderboard from '../components/Leaderboard';
+import EnhancedLeaderboard from '../components/EnhancedLeaderboard';
 import { supabase } from '../lib/supabase';
 
 // Check if user is authenticated
@@ -62,9 +63,14 @@ if (accessToken && refreshToken) {
         </div>
       </section>
       
-      <section class="leaderboard-section">
+      <!-- <section class="leaderboard-section">
         <div id="leaderboard-container">
           <Leaderboard client:load />
+        </div>
+      </section> -->
+      <section class="leaderboard-section">
+        <div id="leaderboard-container">
+            <EnhancedLeaderboard client:load />
         </div>
       </section>
     </div>
