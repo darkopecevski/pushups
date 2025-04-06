@@ -134,7 +134,8 @@ export default function WeeklyStreak({ userId }) {
         ))}
       </div>
       
-      <style jsx>{`
+      <style>
+        {`
         .weekly-streak {
           background-color: var(--color-white);
           border-radius: var(--radius-md);
@@ -281,7 +282,8 @@ export default function WeeklyStreak({ userId }) {
             margin-top: 0;
           }
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 }

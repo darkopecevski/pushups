@@ -282,7 +282,7 @@ export default function ChallengeList() {
         </div>
       )}
       
-      <style jsx>{`
+      <style>{`
         .challenge-list {
           margin-top: var(--spacing-md);
         }

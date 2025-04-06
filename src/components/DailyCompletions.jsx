@@ -217,7 +217,7 @@ export default function DailyCompletions() {
         </div>
       )}
       
-      <style jsx>{`
+      <style>{`
         .daily-completions {
           background-color: white;
           border-radius: var(--radius-md);
@@ -446,7 +446,8 @@ export default function DailyCompletions() {
             height: 40px;
           }
         }
-      `}</style>
+      `}
+      </style>
     </div>
   );
 }

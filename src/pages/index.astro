@@ -6,6 +6,7 @@ import ExerciseTracker from '../components/ExerciseTracker';
 import WelcomeBanner from '../components/WelcomeBanner';
 import WeeklyStreak from '../components/WeeklyStreak';
 import DailyCompletions from '../components/DailyCompletions';
+import QuickStats from '../components/QuickStats';
 import { supabase } from '../lib/supabase';
 
 // Check if user is authenticated
@@ -177,21 +178,7 @@ if (user) {
           
           <section class="section quick-stats">
             <h2>Your Stats</h2>
-            
-            <div id="stats-container" class="stats-grid">
-              <div class="stat-card skeleton">
-                <div class="stat-value skeleton-text"></div>
-                <div class="stat-label skeleton-text"></div>
-              </div>
-              <div class="stat-card skeleton">
-                <div class="stat-value skeleton-text"></div>
-                <div class="stat-label skeleton-text"></div>
-              </div>
-              <div class="stat-card skeleton">
-                <div class="stat-value skeleton-text"></div>
-                <div class="stat-label skeleton-text"></div>
-              </div>
-            </div>
+            <QuickStats client:load userId={user?.id} />
           </section>
         </div>
       </div>
@@ -200,8 +187,6 @@ if (user) {
 </Layout>
 
 <script define:vars={{ userId: user?.id }}>
-  import { supabase } from '../lib/supabase';
-  
   // Handle join challenge buttons
   document.querySelectorAll('.join-challenge-btn').forEach(button => {
     button.addEventListener('click', async () => {
@@ -228,70 +213,6 @@ if (user) {
       }
     });
   });
-  
-  // Fetch quick stats
-  const fetchQuickStats = async () => {
-    const statsContainer = document.getElementById('stats-container');
-    
-    try {
-      // Get total exercise count
-      const { data: exerciseData, error: exerciseError } = await supabase
-        .from('exercise_logs')
-        .select('exercise_count')
-        .eq('user_id', userId);
-        
-      if (exerciseError) throw exerciseError;
-      
-      // Calculate total exercises
-      const totalExercises = exerciseData?.reduce((sum, log) => sum + log.exercise_count, 0) || 0;
-      
-      // Get last 7 days logs
-      const last7Days = new Date();
-      last7Days.setDate(last7Days.getDate() - 7);
-      const last7DaysFormatted = last7Days.toISOString().split('T')[0];
-      
-      const { data: recentLogs, error: recentLogsError } = await supabase
-        .from('exercise_logs')
-        .select('log_date')
-        .eq('user_id', userId)
-        .gte('log_date', last7DaysFormatted);
-        
-      if (recentLogsError) throw recentLogsError;
-      
-      // Calculate active days in last week
-      const activeDaysLastWeek = new Set(recentLogs?.map(log => log.log_date)).size || 0;
-      
-      // Get joined challenges count
-      const { count: challengeCount, error: challengeError } = await supabase
-        .from('challenge_participants')
-        .select('*', { count: 'exact' })
-        .eq('user_id', userId);
-        
-      if (challengeError) throw challengeError;
-      
-      // Update stats container
-      statsContainer.innerHTML = `
-        <div class="stat-card">
-          <div class="stat-value">${totalExercises}</div>
-          <div class="stat-label">Total Exercises</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${activeDaysLastWeek}</div>
-          <div class="stat-label">Active Days (Last 7)</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${challengeCount || 0}</div>
-          <div class="stat-label">Challenges Joined</div>
-        </div>
-      `;
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-      statsContainer.innerHTML = '<div class="error-message">Failed to load stats. Please refresh the page.</div>';
-    }
-  };
-  
-  // Load stats on page load
-  fetchQuickStats();
 </script>
 
 <style>

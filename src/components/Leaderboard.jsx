@@ -74,8 +74,6 @@ export default function Leaderboard({ challengeId }) {
         const { data, error: fetchError } = await query;
         
         if (fetchError) throw fetchError;
-        
-        console.log(`Leaderboard data for ${timeFrame}:`, data);
 
         // Process and aggregate results by user
         const userTotals = {};
@@ -243,7 +241,7 @@ export default function Leaderboard({ challengeId }) {
         </div>
       )}
       
-      <style jsx>{`
+      <style>{`
         .leaderboard {
           background-color: var(--color-white);
           border-radius: var(--radius-md);

@@ -301,7 +301,7 @@ export default function ChallengeForm({ onSuccess }) {
         </div>
       )}
       
-      <style jsx>{`
+      <style>{`
         .challenge-form-container {
           margin-bottom: var(--spacing-xl);
         }

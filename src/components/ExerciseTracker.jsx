@@ -410,7 +410,7 @@ export default function ExerciseTracker({ challengeId }) {
         })}
       </div>
       
-      <style jsx>{`
+      <style>{`
         .exercise-tracker {
           margin-top: var(--spacing-md);
         }
