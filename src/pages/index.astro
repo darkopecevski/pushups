@@ -4,7 +4,8 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ExerciseTracker from '../components/ExerciseTracker';
 import WelcomeBanner from '../components/WelcomeBanner';
-import WeeklyStreak from '../components/WeeklyStreak';
+// import WeeklyStreak from '../components/WeeklyStreak';
+import EnhancedWeeklyStreak from '../components/EnhancedWeeklyStreak';
 import DailyCompletions from '../components/DailyCompletions';
 import QuickStats from '../components/QuickStats';
 import { supabase } from '../lib/supabase';
@@ -105,10 +106,15 @@ if (user) {
             <ExerciseTracker client:load />
           </section>
           
-          <section class="section weekly-activity">
+          <!-- <section class="section weekly-activity">
             <h2>Activity Streak</h2>
             
             <WeeklyStreak client:load userId={user?.id} />
+          </section> -->
+          <section class="section weekly-activity">
+            <h2>Activity Streak</h2>
+            
+            <EnhancedWeeklyStreak client:load userId={user?.id} />
           </section>
           
           <section class="section daily-champions">
