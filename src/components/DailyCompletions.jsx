@@ -363,7 +363,7 @@ export default function DailyCompletions() {
         .challenge-info {
           display: flex;
           align-items: center;
-          margin-bottom: var(--spacing-xs);
+          margin-bottom: var(--spacing-md);
         }
         
         .challenge-badge {

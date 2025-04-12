@@ -4,6 +4,7 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Leaderboard from '../../components/Leaderboard';
 import ExerciseTracker from '../../components/ExerciseTracker';
+import ChallengeActivityChart from '../../components/ChallengeActivityChart';
 import { supabase } from '../../lib/supabase';
 
 // Get challenge ID from URL
@@ -239,6 +240,12 @@ const status = getChallengeStatus();
         </div>
         
         <div class="sidebar">
+          {isParticipant && status === 'active' && (
+            <section class="challenge-activity-section card">
+              <h2>Your Activity</h2>
+              <ChallengeActivityChart client:load challengeId={challenge.id} userId={user?.id} />
+            </section>
+          )}
           <section class="challenge-leaderboard card">
             <h2>Leaderboard</h2>
             <Leaderboard client:load challengeId={challenge.id} />
@@ -476,6 +483,10 @@ const status = getChallengeStatus();
     border-radius: 9999px;
     transition: width 0.3s ease;
   }
+
+  .challenge-activity-section {
+    margin-bottom: var(--spacing-xl);
+  } 
   
   @media (max-width: 960px) {
     .challenge-layout {
