@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function ExerciseTracker({ challengeId }) {
+export default function ExerciseTracker({ challengeId = null }) {
   const [loading, setLoading] = useState(true);
   const [userChallenges, setUserChallenges] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);

@@ -9,6 +9,17 @@ export default function Leaderboard({ challengeId }) {
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   
+  // Helper function to validate UUID format
+  const isValidUUID = (str) => {
+    // Empty string is valid (no filter)
+    if (str === '') return true;
+    if (!str) return false;
+    
+    // UUID regex pattern (simple version)
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidPattern.test(str);
+  };
+  
   useEffect(() => {
     // Get current user
     const fetchCurrentUser = async () => {
@@ -41,7 +52,11 @@ export default function Leaderboard({ challengeId }) {
           `);
         
         // Add challenge filter if provided
-        if (challengeId) {
+        if (challengeId && challengeId !== '') {
+          // Check if it's a valid UUID
+          if (!isValidUUID(challengeId)) {
+            throw new Error('Invalid challenge ID format');
+          }
           query = query.eq('challenge_id', challengeId);
         }
         

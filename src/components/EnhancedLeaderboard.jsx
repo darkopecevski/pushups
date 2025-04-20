@@ -11,6 +11,17 @@ export default function EnhancedLeaderboard({ challengeId }) {
   const [dailyBreakdown, setDailyBreakdown] = useState({});
   const [expandedUser, setExpandedUser] = useState(null);
   
+  // Helper function to validate UUID format
+  const isValidUUID = (str) => {
+    // Empty string is valid (no filter)
+    if (str === '') return true;
+    if (!str) return false;
+    
+    // UUID regex pattern (simple version)
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidPattern.test(str);
+  };
+  
   // Get the last 7 days for the daily breakdown
   const getLast7Days = () => {
     const days = [];
@@ -59,7 +70,12 @@ export default function EnhancedLeaderboard({ challengeId }) {
           `);
         
         // Add challenge filter if provided
-        if (challengeId) {
+        if (challengeId && challengeId !== '') {
+          console.log('challengeId', challengeId);
+          // Check if it's a valid UUID
+          if (!isValidUUID(challengeId)) {
+            throw new Error('Invalid challenge ID format');
+          }
           query = query.eq('challenge_id', challengeId);
         }
         
