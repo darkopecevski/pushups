@@ -11,8 +11,8 @@ import QuickStats from '../components/QuickStats';
 import SuggestedChallenges from '../components/SuggestedChallenges';
 import { supabase } from '../lib/supabase';
 
-// Check if user is authenticated
-const { cookies, redirect } = Astro;
+// Check if user is authenticated - middleware has already verified the session
+const { cookies } = Astro;
 
 const accessToken = cookies.get('sb-access-token');
 const refreshToken = cookies.get('sb-refresh-token');
@@ -21,47 +21,46 @@ let user = null;
 let profile = null;
 let activeChallenges = [];
 
+// Get user data if authenticated (middleware ensures we have valid tokens here)
 if (accessToken && refreshToken) {
   const { data } = await supabase.auth.setSession({
     access_token: accessToken.value,
     refresh_token: refreshToken.value
   });
   
-  user = data.user;
-} else {
-  return redirect('/auth');
-}
-
-// Get user profile and challenges
-if (user) {
-  // Get user profile
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-    
-  profile = profileData;
+  user = data?.user;
   
-  // Get current date for filtering active challenges
-  const today = new Date().toISOString().split('T')[0];
-  
-  // Get challenges the user has joined
-  const { data: participantData } = await supabase
-    .from('challenge_participants')
-    .select(`
-      challenge_id,
-      challenges:challenge_id (
-        id, title, description, exercise_type, goal_type, goal_value, start_date, end_date
-      )
-    `)
-    .eq('user_id', user.id);
+  // Get user profile and challenges only if we have a user
+  if (user) {
+    // Get user profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
     
-  // Filter for active challenges (started but not ended)
-  if (participantData) {
-    activeChallenges = participantData
-      .filter(p => p.challenges && p.challenges.start_date <= today && p.challenges.end_date >= today)
-      .map(p => p.challenges);
+    profile = profileData;
+    
+    // Get current date for filtering active challenges
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get challenges the user has joined
+    const { data: participantData } = await supabase
+      .from('challenge_participants')
+      .select(`
+        challenge_id,
+        challenges:challenge_id (
+          id, title, description, exercise_type, goal_type, goal_value, start_date, end_date
+        )
+      `)
+      .eq('user_id', user.id);
+    
+    // Filter for active challenges (started but not ended)
+    if (participantData) {
+      activeChallenges = participantData
+        .filter(p => p.challenges && p.challenges.start_date <= today && p.challenges.end_date >= today)
+        .map(p => p.challenges);
+    }
   }
 }
 ---

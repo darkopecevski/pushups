@@ -2,7 +2,8 @@
 // src/pages/leaderboard.astro
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
-import Leaderboard from '../components/Leaderboard';
+// Renamed import to avoid conflict
+import LeaderboardComponent from '../components/Leaderboard';
 import EnhancedLeaderboard from '../components/EnhancedLeaderboard';
 import { supabase } from '../lib/supabase';
 
@@ -13,7 +14,8 @@ const accessToken = cookies.get('sb-access-token');
 const refreshToken = cookies.get('sb-refresh-token');
 
 let user = null;
-let challenges = [];
+// Add type annotation
+let challenges: { id: string; title: string }[] = [];
 
 if (accessToken && refreshToken) {
   const { data } = await supabase.auth.setSession({
@@ -35,6 +37,7 @@ if (accessToken && refreshToken) {
       .order('title');
       
     challenges = challengesData || [];
+    console.log('challenges', challenges);
   }
 } else {
   return redirect('/auth');
@@ -63,14 +66,9 @@ if (accessToken && refreshToken) {
         </div>
       </section>
       
-      <!-- <section class="leaderboard-section">
-        <div id="leaderboard-container">
-          <Leaderboard client:load />
-        </div>
-      </section> -->
       <section class="leaderboard-section">
         <div id="leaderboard-container">
-            <EnhancedLeaderboard client:load />
+          <EnhancedLeaderboard client:load challengeId={Astro.url.searchParams.get('challenge') || ""} />
         </div>
       </section>
     </div>
@@ -79,82 +77,36 @@ if (accessToken && refreshToken) {
 
 <script>
   // Challenge filter functionality
-  const challengeSelect = document.getElementById('challenge-select');
-  const leaderboardContainer = document.getElementById('leaderboard-container');
+  const challengeSelect = document.getElementById('challenge-select') as HTMLSelectElement;
   
-  let currentComponent = null;
-  
-  challengeSelect?.addEventListener('change', async () => {
-    const selectedChallengeId = challengeSelect.value;
+  if (challengeSelect) {
+    // Set initial value from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const challengeParam = urlParams.get('challenge');
     
-    // Remove old component
-    if (leaderboardContainer) {
-      leaderboardContainer.innerHTML = '<div class="loading-placeholder"><div class="loader"></div><p>Loading leaderboard...</p></div>';
-    }
-    
-    // Create new component with selected challenge ID
-    if (typeof window.Astro !== 'undefined') {
-      try {
-        // If Astro is available, use its API to render the component
-        if (currentComponent) {
-          currentComponent.unmount();
-        }
-        
-        const props = selectedChallengeId ? { challengeId: selectedChallengeId } : {};
-        
-        if (leaderboardContainer) {
-          leaderboardContainer.innerHTML = '';
-          
-          // Dynamically import the Leaderboard component
-          const { default: LeaderboardComponent } = await import('../components/Leaderboard');
-          
-          // Render it to the container
-          const root = document.createElement('div');
-          leaderboardContainer.appendChild(root);
-          
-          // Create a new React component instance
-          if (window.React && window.ReactDOM) {
-            currentComponent = window.ReactDOM.render(
-              window.React.createElement(LeaderboardComponent, props),
-              root
-            );
-          }
-        }
-      } catch (error) {
-        console.error('Error rendering component:', error);
-        fallbackRender();
-      }
-    } else {
-      fallbackRender();
-    }
-    
-    // Fallback to full page reload
-    function fallbackRender() {
-      // Create new component with selected challenge ID
-      if (leaderboardContainer) {
-        const astroIsland = document.createElement('astro-island');
-        astroIsland.setAttribute('client', 'load');
-        
-        if (selectedChallengeId) {
-          astroIsland.setAttribute('component-url', '/src/components/Leaderboard');
-          astroIsland.setAttribute('component-export', 'default');
-          astroIsland.setAttribute('renderer-url', '/node_modules/@astrojs/react/client.js');
-          astroIsland.setAttribute('props', JSON.stringify({
-            challengeId: selectedChallengeId
-          }));
-        } else {
-          astroIsland.setAttribute('component-url', '/src/components/Leaderboard');
-          astroIsland.setAttribute('component-export', 'default');
-          astroIsland.setAttribute('renderer-url', '/node_modules/@astrojs/react/client.js');
-          astroIsland.setAttribute('props', '{}');
-        }
-        
-        // Replace the placeholder
-        leaderboardContainer.innerHTML = '';
-        leaderboardContainer.appendChild(astroIsland);
+    if (challengeParam) {
+      // Find if this option exists in the dropdown
+      const optionExists = Array.from(challengeSelect.options).some(
+        opt => (opt as HTMLOptionElement).value === challengeParam
+      );
+      
+      if (optionExists) {
+        challengeSelect.value = challengeParam;
       }
     }
-  });
+    
+    // Add change event handler
+    challengeSelect.addEventListener('change', () => {
+      const selectedChallengeId = challengeSelect.value;
+      
+      // Update URL and reload page
+      if (selectedChallengeId) {
+        window.location.href = `/leaderboard?challenge=${selectedChallengeId}`;
+      } else {
+        window.location.href = '/leaderboard';
+      }
+    });
+  }
 </script>
 
 <style>

@@ -32,7 +32,7 @@ export default function WelcomeBanner({ username }) {
         <a href="/profile" className="btn btn-outline">Complete Profile</a>
       </div>
       
-      <style jsx>{`
+      <style>{`
         .welcome-banner {
           background-color: var(--color-white);
           border-radius: var(--radius-md);
