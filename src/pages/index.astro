@@ -8,6 +8,7 @@ import WelcomeBanner from '../components/WelcomeBanner';
 import EnhancedWeeklyStreak from '../components/EnhancedWeeklyStreak';
 import DailyCompletions from '../components/DailyCompletions';
 import QuickStats from '../components/QuickStats';
+import SuggestedChallenges from '../components/SuggestedChallenges';
 import { supabase } from '../lib/supabase';
 
 // Check if user is authenticated
@@ -19,7 +20,6 @@ const refreshToken = cookies.get('sb-refresh-token');
 let user = null;
 let profile = null;
 let activeChallenges = [];
-let availableChallenges = [];
 
 if (accessToken && refreshToken) {
   const { data } = await supabase.auth.setSession({
@@ -58,28 +58,10 @@ if (user) {
     .eq('user_id', user.id);
     
   // Filter for active challenges (started but not ended)
-  const userChallengeIds = [];
-  
   if (participantData) {
     activeChallenges = participantData
-      .filter(p => p.challenges.start_date <= today && p.challenges.end_date >= today)
+      .filter(p => p.challenges && p.challenges.start_date <= today && p.challenges.end_date >= today)
       .map(p => p.challenges);
-      
-    // Store all user challenge IDs for filtering available challenges
-    userChallengeIds.push(...participantData.map(p => p.challenges.id));
-  }
-  
-  // Get available challenges that user hasn't joined yet
-  const { data: allChallenges } = await supabase
-    .from('challenges')
-    .select('*')
-    .gte('end_date', today) // Only show challenges that haven't ended
-    .order('start_date', { ascending: true });
-    
-  if (allChallenges) {
-    availableChallenges = allChallenges
-      .filter(challenge => !userChallengeIds.includes(challenge.id))
-      .slice(0, 3); // Limit to 3 challenges for the homepage
   }
 }
 ---
@@ -126,60 +108,7 @@ if (user) {
           <section class="section suggested-challenges">
             <h2>Suggested Challenges</h2>
             
-            {availableChallenges.length > 0 ? (
-              <div class="challenge-suggestions">
-                {availableChallenges.map(challenge => (
-                  <div class="suggestion-card">
-                    <div class="suggestion-header">
-                      <span class="suggestion-type">{challenge.exercise_type}</span>
-                      <h3>{challenge.title}</h3>
-                    </div>
-                    
-                    <div class="suggestion-body">
-                      <div class="suggestion-meta">
-                        <div class="meta-item">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                          </svg>
-                          <span>
-                            {new Date(challenge.start_date).toLocaleDateString()} - 
-                            {new Date(challenge.end_date).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div class="meta-item">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                          </svg>
-                          <span>
-                            Goal: {challenge.goal_value} {challenge.goal_type.replace('_', ' ')}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <button class="btn btn-primary btn-sm join-challenge-btn" data-id={challenge.id}>
-                        Join Challenge
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                
-                <a href="/challenges" class="view-all-link">
-                  View all available challenges
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14"></path>
-                    <path d="M12 5l7 7-7 7"></path>
-                  </svg>
-                </a>
-              </div>
-            ) : (
-              <div class="empty-suggestions">
-                <p>No new challenges available at the moment.</p>
-                <a href="/challenges" class="btn btn-outline btn-sm">Browse All Challenges</a>
-              </div>
-            )}
+            <SuggestedChallenges client:load userId={user?.id} />
           </section>
           
           <section class="section quick-stats">
@@ -191,35 +120,6 @@ if (user) {
     </div>
   </main>
 </Layout>
-
-<script define:vars={{ userId: user?.id }}>
-  // Handle join challenge buttons
-  document.querySelectorAll('.join-challenge-btn').forEach(button => {
-    button.addEventListener('click', async () => {
-      const challengeId = button.getAttribute('data-id');
-      button.disabled = true;
-      button.textContent = 'Joining...';
-      
-      try {
-        const { error } = await supabase
-          .from('challenge_participants')
-          .insert([
-            { challenge_id: challengeId, user_id: userId }
-          ]);
-          
-        if (error) throw error;
-        
-        // Reload page to show updated challenges
-        window.location.reload();
-      } catch (err) {
-        console.error('Error joining challenge:', err);
-        alert('Error joining challenge: ' + err.message);
-        button.disabled = false;
-        button.textContent = 'Join Challenge';
-      }
-    });
-  });
-</script>
 
 <style>
   main {

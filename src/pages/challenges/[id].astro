@@ -18,6 +18,7 @@ const refreshToken = cookies.get('sb-refresh-token');
 
 let user = null;
 let isParticipant = false;
+let isCreator = false;
 
 if (accessToken && refreshToken) {
   const { data } = await supabase.auth.setSession({
@@ -59,6 +60,9 @@ const { data: challenge } = await supabase
 if (!challenge) {
   return Astro.redirect('/challenges');
 }
+
+// Check if the current user is the creator of the challenge
+isCreator = user?.id === challenge.created_by;
 
 // Format dates for display
 const startDate = new Date(challenge.start_date).toLocaleDateString();
@@ -237,6 +241,56 @@ const status = getChallengeStatus();
               </div>
             </div>
           </section>
+          
+          {isCreator && (
+            <section class="challenge-invitations-management card">
+              <h2>Manage Invitations</h2>
+              
+              <div class="visibility-section">
+                <h3>Challenge Visibility</h3>
+                <div class="visibility-controls">
+                  <div class="current-visibility">
+                    <div class={`visibility-badge ${challenge.visibility || 'public'}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        {challenge.visibility === 'private' ? (
+                          <path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h2c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/>
+                        ) : (
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        )}
+                        {challenge.visibility === 'private' ? null : <circle cx="12" cy="12" r="3"></circle>}
+                      </svg>
+                      <span>Currently {challenge.visibility || 'public'}</span>
+                    </div>
+                  </div>
+                  <button id="toggleVisibility" class="btn btn-outline" data-current={challenge.visibility || 'public'}>
+                    Change to {challenge.visibility === 'private' ? 'Public' : 'Private'}
+                  </button>
+                </div>
+              </div>
+              
+              <div class="invitation-management-section">
+                <h3>Invite Participants</h3>
+                <div class="invitation-form">
+                  <input 
+                    type="email" 
+                    id="inviteEmail" 
+                    placeholder="Enter email address" 
+                    class="input-field"
+                  />
+                  <button id="sendInvitation" class="btn btn-primary">
+                    Send Invitation
+                  </button>
+                </div>
+                
+                <div class="invitations-list-section">
+                  <h3>Current Invitations</h3>
+                  <div id="invitationsList" class="invitations-list">
+                    <div class="loading-invitations">Loading invitations...</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
         </div>
         
         <div class="sidebar">
@@ -291,6 +345,194 @@ const status = getChallengeStatus();
       button.textContent = 'Join Challenge';
     }
   });
+</script>
+
+<script define:vars={{ challengeId: challenge.id, isCreator: isCreator }}>
+  import { supabase } from '../../lib/supabase';
+  
+  // Only run this code if the user is the creator of the challenge
+  if (isCreator) {
+    // Load current invitations
+    async function loadInvitations() {
+      try {
+        const { data: invitations, error } = await supabase
+          .from('challenge_invites')
+          .select('*')
+          .eq('challenge_id', challengeId)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        const invitationsList = document.getElementById('invitationsList');
+        
+        if (invitations && invitations.length > 0) {
+          invitationsList.innerHTML = '';
+          
+          invitations.forEach(invitation => {
+            const invitationItem = document.createElement('div');
+            invitationItem.className = `invitation-item ${invitation.status}`;
+            invitationItem.innerHTML = `
+              <div class="invitation-email">${invitation.email}</div>
+              <div class="invitation-status">${invitation.status}</div>
+              <div class="invitation-date">Invited: ${new Date(invitation.created_at).toLocaleDateString()}</div>
+              <div class="invitation-actions">
+                ${invitation.status === 'pending' ? `
+                  <button class="btn btn-sm resend-invitation" data-email="${invitation.email}">Resend</button>
+                ` : ''}
+                <button class="btn btn-sm btn-outline remove-invitation" data-email="${invitation.email}">Remove</button>
+              </div>
+            `;
+            invitationsList.appendChild(invitationItem);
+          });
+          
+          // Add event listeners for resend and remove buttons
+          document.querySelectorAll('.resend-invitation').forEach(button => {
+            button.addEventListener('click', (e) => {
+              const email = e.target.dataset.email;
+              resendInvitation(email);
+            });
+          });
+          
+          document.querySelectorAll('.remove-invitation').forEach(button => {
+            button.addEventListener('click', (e) => {
+              const email = e.target.dataset.email;
+              removeInvitation(email);
+            });
+          });
+        } else {
+          invitationsList.innerHTML = `<div class="empty-invitations">No invitations sent yet.</div>`;
+        }
+      } catch (err) {
+        console.error('Error loading invitations:', err);
+        document.getElementById('invitationsList').innerHTML = `
+          <div class="error-loading">Error loading invitations: ${err.message}</div>
+        `;
+      }
+    }
+    
+    // Send a new invitation
+    async function sendInvitation(email) {
+      try {
+        const { error } = await supabase
+          .from('challenge_invites')
+          .insert([
+            { 
+              challenge_id: challengeId, 
+              email: email,
+              status: 'pending'
+            }
+          ]);
+          
+        if (error) throw error;
+        
+        // Clear the input field
+        document.getElementById('inviteEmail').value = '';
+        
+        // Reload the invitations list
+        loadInvitations();
+      } catch (err) {
+        console.error('Error sending invitation:', err);
+        alert(`Error sending invitation: ${err.message}`);
+      }
+    }
+    
+    // Resend an invitation (update the timestamp)
+    async function resendInvitation(email) {
+      try {
+        const { error } = await supabase
+          .from('challenge_invites')
+          .update({ 
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .match({ challenge_id: challengeId, email: email });
+          
+        if (error) throw error;
+        
+        alert(`Invitation resent to ${email}`);
+        loadInvitations();
+      } catch (err) {
+        console.error('Error resending invitation:', err);
+        alert(`Error resending invitation: ${err.message}`);
+      }
+    }
+    
+    // Remove an invitation
+    async function removeInvitation(email) {
+      if (confirm(`Are you sure you want to remove the invitation for ${email}?`)) {
+        try {
+          const { error } = await supabase
+            .from('challenge_invites')
+            .delete()
+            .match({ challenge_id: challengeId, email: email });
+            
+          if (error) throw error;
+          
+          loadInvitations();
+        } catch (err) {
+          console.error('Error removing invitation:', err);
+          alert(`Error removing invitation: ${err.message}`);
+        }
+      }
+    }
+    
+    // Toggle challenge visibility
+    async function toggleVisibility() {
+      const toggleButton = document.getElementById('toggleVisibility');
+      const currentVisibility = toggleButton.dataset.current;
+      const newVisibility = currentVisibility === 'public' ? 'private' : 'public';
+      
+      // If changing from private to public, show confirmation
+      if (currentVisibility === 'private' && !confirm(
+        'Changing to a public challenge will make it visible to all users. Continue?'
+      )) {
+        return;
+      }
+      
+      try {
+        toggleButton.disabled = true;
+        toggleButton.textContent = 'Updating...';
+        
+        const { error } = await supabase
+          .from('challenges')
+          .update({ visibility: newVisibility })
+          .eq('id', challengeId);
+          
+        if (error) throw error;
+        
+        // Reload page to show updated UI
+        window.location.reload();
+      } catch (err) {
+        console.error('Error updating visibility:', err);
+        alert(`Error updating visibility: ${err.message}`);
+        toggleButton.disabled = false;
+        toggleButton.textContent = `Change to ${newVisibility === 'private' ? 'Private' : 'Public'}`;
+      }
+    }
+    
+    // Event listeners
+    document.getElementById('sendInvitation')?.addEventListener('click', () => {
+      const email = document.getElementById('inviteEmail').value.trim();
+      if (email) {
+        sendInvitation(email);
+      } else {
+        alert('Please enter a valid email address.');
+      }
+    });
+    
+    document.getElementById('toggleVisibility')?.addEventListener('click', toggleVisibility);
+    
+    // Load invitations when the page loads
+    loadInvitations();
+    
+    // Subscribe to changes in the challenge_invites table
+    const invitesSubscription = supabase
+      .channel('public:challenge_invites')
+      .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'challenge_invites', filter: `challenge_id=eq.${challengeId}` }, 
+          loadInvitations)
+      .subscribe();
+  }
 </script>
 
 <style>
@@ -488,6 +730,146 @@ const status = getChallengeStatus();
     margin-bottom: var(--spacing-xl);
   } 
   
+  /* Invitation Management Styles */
+  .challenge-invitations-management h3 {
+    font-size: 1rem;
+    margin: var(--spacing-lg) 0 var(--spacing-md);
+  }
+  
+  .challenge-invitations-management h3:first-of-type {
+    margin-top: 0;
+  }
+  
+  .visibility-section {
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .visibility-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+  }
+  
+  .current-visibility {
+    display: flex;
+    align-items: center;
+  }
+  
+  .visibility-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: capitalize;
+  }
+  
+  .visibility-badge.public {
+    background-color: rgba(25, 135, 84, 0.1);
+    color: rgb(25, 135, 84);
+  }
+  
+  .visibility-badge.private {
+    background-color: rgba(108, 117, 125, 0.1);
+    color: rgb(108, 117, 125);
+  }
+  
+  .invitation-form {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .input-field {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+  }
+  
+  .invitations-list {
+    background-color: var(--color-background);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  
+  .loading-invitations, .empty-invitations, .error-loading {
+    padding: var(--spacing-md);
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--color-text-light);
+  }
+  
+  .invitation-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    gap: var(--spacing-md);
+    font-size: 0.9rem;
+  }
+  
+  .invitation-item:last-child {
+    border-bottom: none;
+  }
+  
+  .invitation-item.pending {
+    background-color: rgba(255, 193, 7, 0.05);
+  }
+  
+  .invitation-item.accepted {
+    background-color: rgba(25, 135, 84, 0.05);
+  }
+  
+  .invitation-item.declined {
+    background-color: rgba(220, 53, 69, 0.05);
+  }
+  
+  .invitation-email {
+    font-weight: 500;
+    flex: 1;
+  }
+  
+  .invitation-status {
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  
+  .pending .invitation-status {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: rgb(255, 193, 7);
+  }
+  
+  .accepted .invitation-status {
+    background-color: rgba(25, 135, 84, 0.1);
+    color: rgb(25, 135, 84);
+  }
+  
+  .declined .invitation-status {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: rgb(220, 53, 69);
+  }
+  
+  .invitation-date {
+    color: var(--color-text-light);
+    font-size: 0.8rem;
+  }
+  
+  .invitation-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+  }
+  
   @media (max-width: 960px) {
     .challenge-layout {
       grid-template-columns: 1fr;
@@ -500,6 +882,29 @@ const status = getChallengeStatus();
     
     #joinChallenge {
       width: 100%;
+    }
+    
+    .invitation-form {
+      flex-direction: column;
+    }
+    
+    .invitation-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .invitation-email {
+      width: 100%;
+      margin-bottom: var(--spacing-xs);
+    }
+    
+    .invitation-actions {
+      width: 100%;
+      margin-top: var(--spacing-xs);
+    }
+    
+    .invitation-actions button {
+      flex: 1;
     }
   }
 </style>

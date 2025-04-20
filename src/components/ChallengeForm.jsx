@@ -18,6 +18,9 @@ export default function ChallengeForm({ onSuccess }) {
   const [goalValue, setGoalValue] = useState(50);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [visibility, setVisibility] = useState('public');
+  const [inviteEmails, setInviteEmails] = useState('');
+  const [emailError, setEmailError] = useState(null);
   
   // Check if user is admin
   useEffect(() => {
@@ -74,7 +77,30 @@ export default function ChallengeForm({ onSuccess }) {
     setGoalValue(50);
     setStartDate(tomorrow.toISOString().split('T')[0]);
     setEndDate(endDateDefault.toISOString().split('T')[0]);
+    setVisibility('public');
+    setInviteEmails('');
+    setEmailError(null);
     setFormError(null);
+  };
+  
+  const validateEmails = (emails) => {
+    if (!emails.trim() && visibility === 'private') {
+      setEmailError('You must invite at least one person to a private challenge');
+      return false;
+    }
+    
+    const emailList = emails.split(/[,\s]+/).filter(email => email.trim() !== '');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    const invalidEmails = emailList.filter(email => !emailRegex.test(email));
+    
+    if (invalidEmails.length > 0) {
+      setEmailError(`Invalid email format: ${invalidEmails.join(', ')}`);
+      return false;
+    }
+    
+    setEmailError(null);
+    return true;
   };
   
   const handleSubmit = async (e) => {
@@ -85,12 +111,20 @@ export default function ChallengeForm({ onSuccess }) {
       return;
     }
     
+    // Validate emails if private challenge
+    if (visibility === 'private') {
+      if (!validateEmails(inviteEmails)) {
+        return;
+      }
+    }
+    
     setLoading(true);
     setFormError(null);
     setFormSuccess(false);
     
     try {
-      const { data, error } = await supabase
+      // Insert the challenge
+      const { data: challengeData, error: challengeError } = await supabase
         .from('challenges')
         .insert([
           {
@@ -101,11 +135,32 @@ export default function ChallengeForm({ onSuccess }) {
             goal_value: parseInt(goalValue),
             start_date: startDate,
             end_date: endDate,
-            created_by: currentUser?.id
+            created_by: currentUser?.id,
+            visibility
           }
-        ]);
+        ])
+        .select();
         
-      if (error) throw error;
+      if (challengeError) throw challengeError;
+      
+      // If private challenge, add invitations
+      if (visibility === 'private' && inviteEmails.trim() !== '') {
+        const emailList = inviteEmails.split(/[,\s]+/).filter(email => email.trim() !== '');
+        
+        // Prepare invite records
+        const inviteRecords = emailList.map(email => ({
+          challenge_id: challengeData[0].id,
+          email: email.trim().toLowerCase(),
+          status: 'pending'
+        }));
+        
+        // Insert invites
+        const { error: inviteError } = await supabase
+          .from('challenge_invites')
+          .insert(inviteRecords);
+          
+        if (inviteError) throw inviteError;
+      }
       
       // Reset form and show success
       resetForm();
@@ -255,6 +310,61 @@ export default function ChallengeForm({ onSuccess }) {
                   />
                 </div>
               </div>
+              
+              <div className="form-group">
+                <label className="form-label">Visibility</label>
+                <div className="visibility-options">
+                  <label className="visibility-option">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="public"
+                      checked={visibility === 'public'}
+                      onChange={() => setVisibility('public')}
+                    />
+                    <span className="option-label">Public</span>
+                    <span className="option-description">
+                      Anyone can see and join this challenge
+                    </span>
+                  </label>
+                  
+                  <label className="visibility-option">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="private"
+                      checked={visibility === 'private'}
+                      onChange={() => setVisibility('private')}
+                    />
+                    <span className="option-label">Private</span>
+                    <span className="option-description">
+                      Only invited users can see and join this challenge
+                    </span>
+                  </label>
+                </div>
+              </div>
+              
+              {visibility === 'private' && (
+                <div className="form-group">
+                  <label htmlFor="inviteEmails" className="form-label">
+                    Invite Participants (comma or space separated emails)
+                  </label>
+                  <textarea
+                    id="inviteEmails"
+                    className={`form-control ${emailError ? 'error' : ''}`}
+                    value={inviteEmails}
+                    onChange={(e) => {
+                      setInviteEmails(e.target.value);
+                      if (emailError) validateEmails(e.target.value);
+                    }}
+                    placeholder="email@example.com, another@example.com"
+                    rows={2}
+                  />
+                  {emailError && (
+                    <div className="form-error">{emailError}</div>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="form-footer">
@@ -373,6 +483,57 @@ export default function ChallengeForm({ onSuccess }) {
           gap: var(--spacing-md);
         }
         
+        .visibility-options {
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-md);
+          margin-top: var(--spacing-xs);
+        }
+        
+        .visibility-option {
+          display: flex;
+          align-items: flex-start;
+          gap: var(--spacing-sm);
+          padding: var(--spacing-sm);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .visibility-option:hover {
+          background-color: var(--color-background);
+        }
+        
+        .visibility-option input {
+          margin-top: 0.2rem;
+        }
+        
+        .visibility-option input:checked + .option-label {
+          font-weight: 600;
+          color: var(--color-primary);
+        }
+        
+        .option-label {
+          font-weight: 500;
+          margin-right: var(--spacing-sm);
+        }
+        
+        .option-description {
+          color: var(--color-text-light);
+          font-size: 0.875rem;
+        }
+        
+        .form-error {
+          color: var(--color-error);
+          font-size: 0.875rem;
+          margin-top: var(--spacing-xs);
+        }
+        
+        .form-control.error {
+          border-color: var(--color-error);
+        }
+        
         @media (max-width: 576px) {
           .form-actions {
             flex-direction: column;
@@ -380,6 +541,10 @@ export default function ChallengeForm({ onSuccess }) {
           
           .form-actions button {
             width: 100%;
+          }
+          
+          .visibility-options {
+            flex-direction: column;
           }
         }
       `}</style>
