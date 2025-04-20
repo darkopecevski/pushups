@@ -11,7 +11,7 @@ const publicRoutes = [
 ];
 
 // Add debugging to track flow
-const debug = (message, data = null) => {
+const debug = (message: string, data: any = null): void => {
   console.log(`[Middleware] ${message}`, data || '');
 };
 
@@ -50,7 +50,7 @@ export const onRequest = defineMiddleware(async ({ request, cookies, redirect },
         cookies.delete('sb-access-token', { path: '/' });
         cookies.delete('sb-refresh-token', { path: '/' });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       // In case of any error, assume session is invalid and clean up
       debug('Session validation error', err);
       cookies.delete('sb-access-token', { path: '/' });

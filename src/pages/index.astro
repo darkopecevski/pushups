@@ -58,8 +58,8 @@ if (accessToken && refreshToken) {
     // Filter for active challenges (started but not ended)
     if (participantData) {
       activeChallenges = participantData
-        .filter(p => p.challenges && p.challenges.start_date <= today && p.challenges.end_date >= today)
-        .map(p => p.challenges);
+        .filter(p => p.challenges && p.challenges[0] && p.challenges[0].start_date <= today && p.challenges[0].end_date >= today)
+        .map(p => p.challenges[0]);
     }
   }
 }
