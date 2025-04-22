@@ -43,18 +43,57 @@ CREATE TABLE public.exercise_logs (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Water Intake Settings Table
+CREATE TABLE public.water_intake_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  daily_goal INTEGER NOT NULL DEFAULT 2000, -- Default goal of 2000ml or ~64oz
+  unit_preference TEXT NOT NULL DEFAULT 'ml', -- 'ml' or 'oz'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Water Intake Logs Table
+CREATE TABLE public.water_intake_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL, -- Amount in ml
+  beverage_type TEXT NOT NULL DEFAULT 'water', -- Type of beverage (water, tea, coffee, etc)
+  log_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  log_time TIME NOT NULL DEFAULT CURRENT_TIME,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Quick Log Presets Table
+CREATE TABLE public.water_intake_presets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL, -- Amount in ml
+  beverage_type TEXT NOT NULL DEFAULT 'water',
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_challenge_participants_user_id ON public.challenge_participants(user_id);
 CREATE INDEX idx_challenge_participants_challenge_id ON public.challenge_participants(challenge_id);
 CREATE INDEX idx_exercise_logs_user_id ON public.exercise_logs(user_id);
 CREATE INDEX idx_exercise_logs_challenge_id ON public.exercise_logs(challenge_id);
 CREATE INDEX idx_exercise_logs_log_date ON public.exercise_logs(log_date);
+CREATE INDEX idx_water_intake_settings_user_id ON public.water_intake_settings(user_id);
+CREATE INDEX idx_water_intake_logs_user_id ON public.water_intake_logs(user_id);
+CREATE INDEX idx_water_intake_logs_log_date ON public.water_intake_logs(log_date);
+CREATE INDEX idx_water_intake_presets_user_id ON public.water_intake_presets(user_id);
 
 -- Add RLS (Row Level Security) policies
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenge_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exercise_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.water_intake_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.water_intake_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.water_intake_presets ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Public profiles are viewable by everyone"
@@ -125,6 +164,53 @@ CREATE POLICY "Users can insert their own exercise logs"
 
 CREATE POLICY "Users can update their own exercise logs"
   ON public.exercise_logs FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- Water intake settings policies
+CREATE POLICY "Users can view their own water intake settings"
+  ON public.water_intake_settings FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own water intake settings"
+  ON public.water_intake_settings FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own water intake settings"
+  ON public.water_intake_settings FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- Water intake logs policies
+CREATE POLICY "Users can view their own water intake logs"
+  ON public.water_intake_logs FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own water intake logs"
+  ON public.water_intake_logs FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own water intake logs"
+  ON public.water_intake_logs FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own water intake logs"
+  ON public.water_intake_logs FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Water intake presets policies
+CREATE POLICY "Users can view their own water intake presets"
+  ON public.water_intake_presets FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own water intake presets"
+  ON public.water_intake_presets FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own water intake presets"
+  ON public.water_intake_presets FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own water intake presets"
+  ON public.water_intake_presets FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Get current streak function
@@ -236,3 +322,21 @@ CREATE POLICY "Challenge creators can insert invitations"
 --   FOREIGN KEY (challenge_id) 
 --   REFERENCES public.challenges(id) 
 --   ON DELETE CASCADE;
+
+-- Function to get total water intake for a specific day
+CREATE OR REPLACE FUNCTION public.get_daily_water_intake(p_user_id UUID, p_date DATE)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_total INTEGER := 0;
+BEGIN
+  SELECT COALESCE(SUM(amount), 0)
+  INTO v_total
+  FROM public.water_intake_logs
+  WHERE user_id = p_user_id
+    AND log_date = p_date;
+  
+  RETURN v_total;
+END;
+$$;
