@@ -1,0 +1,107 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import WaterIntakeTracker from '../components/WaterIntakeTracker.jsx';
+import { supabase } from '../lib/supabase';
+
+// Get user data using server-side Supabase client
+const { cookies } = Astro;
+const accessToken = cookies.get('sb-access-token');
+const refreshToken = cookies.get('sb-refresh-token');
+
+let user = null;
+let profile = null;
+
+// Get user data if authenticated
+if (accessToken && refreshToken) {
+  const { data } = await supabase.auth.setSession({
+    access_token: accessToken.value,
+    refresh_token: refreshToken.value
+  });
+  
+  user = data?.user;
+  
+  if (user) {
+    // Get user profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    profile = profileData;
+  }
+}
+
+// If no user is logged in, redirect to auth page
+if (!user) {
+  return Astro.redirect('/auth');
+}
+---
+
+<Layout title="Tools | FitChallenge">
+  <Header activePage="tools" />
+  
+  <main class="container tools-container">
+    <h1>Tools</h1>
+    <p class="subtitle">A collection of useful tools to help you on your fitness journey.</p>
+    
+    <div class="tools-grid">
+      <div class="tool-card">
+        <h2>Water Intake Tracker</h2>
+        <p>Track your daily water intake and stay hydrated!</p>
+        <WaterIntakeTracker client:load userId={user.id} />
+      </div>
+      
+      <!-- More tools can be added here in the future -->
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .tools-container {
+    padding: 2rem 2rem;
+    margin: 0 auto;
+  }
+  
+  h1 {
+    margin-bottom: 0.5rem;
+    font-size: 2rem;
+  }
+  
+  .subtitle {
+    margin-bottom: 2rem;
+    color: #666;
+  }
+  
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+  
+  .tool-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .tool-card h2 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    font-size: 1.5rem;
+  }
+  
+  .tool-card p {
+    margin-bottom: 1.5rem;
+    color: #666;
+  }
+  
+  @media (max-width: 768px) {
+    .tools-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style> 

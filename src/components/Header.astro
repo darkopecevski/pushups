@@ -5,6 +5,7 @@ const { activePage = 'home' } = Astro.props;
 const navItems = [
   { id: 'home', label: 'Home', href: '/' },
   { id: 'challenges', label: 'Challenges', href: '/challenges' },
+  { id: 'tools', label: 'Tools', href: '/tools' },
   { id: 'leaderboard', label: 'Leaderboard', href: '/leaderboard' },
   { id: 'profile', label: 'Profile', href: '/profile' }
 ];
@@ -14,33 +15,48 @@ const navItems = [
   <div class="container nav-container">
     <a href="/" class="logo">FitChallenge</a>
     
-    <button id="mobile-menu-toggle" class="mobile-menu-btn" aria-label="Toggle menu">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="6" x2="21" y2="6"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-      </svg>
-    </button>
-    
-    <nav>
-      <ul id="nav-links" class="nav-links">
-        {navItems.map(item => (
+    <div class="nav-right">
+      <button id="mobile-menu-toggle" class="mobile-menu-btn" aria-label="Toggle menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      
+      <nav>
+        <ul id="nav-links" class="nav-links">
+          {navItems.map(item => (
+            <li>
+              <a 
+                href={item.href} 
+                class={`nav-link ${activePage === item.id ? 'active' : ''}`}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))}
           <li>
-            <a 
-              href={item.href} 
-              class={`nav-link ${activePage === item.id ? 'active' : ''}`}
-            >
-              {item.label}
-            </a>
+            <button id="logout-btn" class="btn btn-outline btn-sm">Logout</button>
           </li>
-        ))}
-        <li>
-          <button id="logout-btn" class="btn btn-outline btn-sm">Logout</button>
-        </li>
-      </ul>
-    </nav>
+        </ul>
+      </nav>
+    </div>
   </div>
 </header>
+
+<style>
+  .nav-right {
+    display: flex;
+    align-items: center;
+  }
+  
+  @media (max-width: 768px) {
+    .nav-right {
+      justify-content: flex-end;
+    }
+  }
+</style>
 
 <script>
   import { supabase } from '../lib/supabase';
