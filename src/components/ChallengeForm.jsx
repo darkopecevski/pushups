@@ -253,6 +253,9 @@ export default function ChallengeForm({ onSuccess }) {
                     <option value="squats">Squats</option>
                     <option value="pullups">Pull-ups</option>
                     <option value="planks">Planks</option>
+                    <option value="hangs">Hangs</option>
+                    <option value="burpees">Burpees</option>
+                    <option value="steps">Steps</option>
                   </select>
                 </div>
                 
