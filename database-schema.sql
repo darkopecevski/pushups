@@ -75,6 +75,27 @@ CREATE TABLE public.water_intake_presets (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Fasting Settings Table
+CREATE TABLE public.fasting_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  goal_hours INTEGER NOT NULL DEFAULT 18,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Fasting Sessions Table
+CREATE TABLE public.fasting_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_time TIMESTAMP WITH TIME ZONE,
+  goal_hours INTEGER NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_challenge_participants_user_id ON public.challenge_participants(user_id);
 CREATE INDEX idx_challenge_participants_challenge_id ON public.challenge_participants(challenge_id);
@@ -85,6 +106,9 @@ CREATE INDEX idx_water_intake_settings_user_id ON public.water_intake_settings(u
 CREATE INDEX idx_water_intake_logs_user_id ON public.water_intake_logs(user_id);
 CREATE INDEX idx_water_intake_logs_log_date ON public.water_intake_logs(log_date);
 CREATE INDEX idx_water_intake_presets_user_id ON public.water_intake_presets(user_id);
+CREATE INDEX idx_fasting_settings_user_id ON public.fasting_settings(user_id);
+CREATE INDEX idx_fasting_sessions_user_id ON public.fasting_sessions(user_id);
+CREATE INDEX idx_fasting_sessions_start_time ON public.fasting_sessions(start_time);
 
 -- Add RLS (Row Level Security) policies
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -94,6 +118,8 @@ ALTER TABLE public.exercise_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.water_intake_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.water_intake_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.water_intake_presets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fasting_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fasting_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Public profiles are viewable by everyone"
@@ -211,6 +237,36 @@ CREATE POLICY "Users can update their own water intake presets"
 
 CREATE POLICY "Users can delete their own water intake presets"
   ON public.water_intake_presets FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Fasting settings policies
+CREATE POLICY "Users can view their own fasting settings"
+  ON public.fasting_settings FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own fasting settings"
+  ON public.fasting_settings FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own fasting settings"
+  ON public.fasting_settings FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- Fasting sessions policies
+CREATE POLICY "Users can view their own fasting sessions"
+  ON public.fasting_sessions FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own fasting sessions"
+  ON public.fasting_sessions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own fasting sessions"
+  ON public.fasting_sessions FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own fasting sessions"
+  ON public.fasting_sessions FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Get current streak function

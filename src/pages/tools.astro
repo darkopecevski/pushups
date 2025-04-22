@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import WaterIntakeTracker from '../components/WaterIntakeTracker.jsx';
+import FastingTracker from '../components/FastingTracker.jsx';
 import { supabase } from '../lib/supabase';
 
 // Get user data using server-side Supabase client
@@ -53,6 +54,12 @@ if (!user) {
         <WaterIntakeTracker client:load userId={user.id} />
       </div>
       
+      <div class="tool-card">
+        <h2>Fasting Tracker</h2>
+        <p>Track your intermittent fasting periods and enhance your metabolic health.</p>
+        <FastingTracker client:load userId={user.id} />
+      </div>
+      
       <!-- More tools can be added here in the future -->
     </div>
   </main>
@@ -60,7 +67,8 @@ if (!user) {
 
 <style>
   .tools-container {
-    padding: 2rem 2rem;
+    padding: 2rem 1rem;
+    max-width: 1200px;
     margin: 0 auto;
   }
   
@@ -76,7 +84,7 @@ if (!user) {
   
   .tools-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 2rem;
   }
   
@@ -86,6 +94,11 @@ if (!user) {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 1.5rem;
     transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .tool-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   }
   
   .tool-card h2 {
