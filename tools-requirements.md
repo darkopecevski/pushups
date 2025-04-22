@@ -1,11 +1,11 @@
-# Daily tracking of water intake
+# Daily fasting tracker
 
-1. Create new menu item in the header called tools
-2. Clicking on tools will open a page where all "tools" widgets will be listed
-3. For now we will create new tool which will be tracking of daily water intake
-    1. User should be able to set daily intake goal (for example 3 litters)
-    2. Nice presentation of the current amount of water taken is presented
-    3. Option to log water manually
-    4. Quick log with predefined values (for example: 250ml, 300ml, 500ml etc.)
+1. Create new tool which will be tracking of fasting time spent daily
+    1. User should be able to set daily fasting interval (16:8, 18:6, 12:12 etc.)
+    2. User should be abel to start / end a fast
+    3. Nice presentation of the current time spent fasting or eating
+    4. Option to adjust start and end times
     5. The tool should hold historic data
-4. The tool should be component based (like a card) that can be reused from other pages as well
+2. The tool should be component based (like a card) that can be reused from other pages as well
+3. The tool should be done in a similar way as the water intake tool done previously.
+4. Widget should be added to tools.astro page
