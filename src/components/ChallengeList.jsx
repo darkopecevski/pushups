@@ -1331,8 +1331,9 @@ export default function ChallengeList() {
                       defaultValue={editingChallenge.goal_type}
                       required
                     >
-                      <option value="per_day">Per Day</option>
-                      <option value="total">Total</option>
+                      <option value="daily_count">Daily Count</option>
+                      <option value="total_count">Total Count</option>
+                      <option value="streak">Streak Days</option>
                     </select>
                   </div>
                   
