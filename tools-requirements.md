@@ -1,11 +1,28 @@
-# Daily fasting tracker
+# Universal timer / stopwatch for tracking time during workouts
 
-1. Create new tool which will be tracking of fasting time spent daily
-    1. User should be able to set daily fasting interval (16:8, 18:6, 12:12 etc.)
-    2. User should be abel to start / end a fast
-    3. Nice presentation of the current time spent fasting or eating
-    4. Option to adjust start and end times
-    5. The tool should hold historic data
-2. The tool should be component based (like a card) that can be reused from other pages as well
-3. The tool should be done in a similar way as the water intake tool done previously.
-4. Widget should be added to tools.astro page
+Here are the functionalities that the timer needs to have:
+
+1. Stopwatch
+- User should be able to configure: 
+    - Prepare phase (set time in seconds to use as a countdown before they start with the workout)
+    - Time cap - Clock should stop at this time
+    
+
+2. AMRAP (as many rounds as possible)
+- User should be able to configure: 
+    - Prepare phase (set time in seconds to use as a countdown before they start with the workout)
+    - Start time - Total duration of workout
+
+3. Tabata
+- User should be able to configure: 
+    - Prepare phase (set time in seconds to use as a countdown before they start with the workout) (seconds)
+    - Work - Do exercise for this long (seconds)
+    - Rest - Rest for this long (seconds)
+    - Rounds - One round is Work + Rest (number)
+    - Cycles - One cycle is X Rounds (number)
+    - Rest Between Cycles - recovery interval (seconds)
+
+This should be done as widget in the Tools page, following the layout of the other two widgets there
+We don't need to store any data (settings can be done locally (localStorage so they will be available if tab is closed and reopened ))
+There are screenshots attached so we should follow that design. 
+

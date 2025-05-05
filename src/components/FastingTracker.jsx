@@ -576,7 +576,7 @@ const FastingTracker = ({ userId }) => {
         </div>
       )}
       
-      <style jsx>{`
+      <style>{`
         .fasting-tracker {
           background-color: #fff;
           border-radius: 16px;
