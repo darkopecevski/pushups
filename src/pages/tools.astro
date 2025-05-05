@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import WaterIntakeTracker from '../components/WaterIntakeTracker.jsx';
 import FastingTracker from '../components/FastingTracker.jsx';
+import WorkoutTimer from '../components/WorkoutTimer.jsx';
 import { supabase } from '../lib/supabase';
 
 // Get user data using server-side Supabase client
@@ -60,7 +61,11 @@ if (!user) {
         <FastingTracker client:load userId={user.id} />
       </div>
       
-      <!-- More tools can be added here in the future -->
+      <div class="tool-card">
+        <h2>Workout Timer</h2>
+        <p>Universal timer with Stopwatch, AMRAP, and Tabata modes for your workouts.</p>
+        <WorkoutTimer client:load />
+      </div>
     </div>
   </main>
 </Layout>
@@ -84,7 +89,7 @@ if (!user) {
   
   .tools-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
     gap: 2rem;
   }
   
@@ -97,7 +102,6 @@ if (!user) {
   }
   
   .tool-card:hover {
-    transform: translateY(-5px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   }
   
