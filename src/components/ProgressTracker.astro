@@ -1,0 +1,95 @@
+---
+// ProgressTracker.astro
+---
+import { supabase } from '../lib/supabase';
+
+const { cookies } = Astro;
+const accessToken = cookies.get('sb-access-token');
+const refreshToken = cookies.get('sb-refresh-token');
+
+let user = null;
+let progress: any[] = [];
+
+if (accessToken && refreshToken) {
+  const { data } = await supabase.auth.setSession({
+    access_token: accessToken.value,
+    refresh_token: refreshToken.value
+  });
+  user = data?.user;
+  if (user) {
+    const { data: progressData } = await supabase
+      .from('weekly_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('week_number', { ascending: true });
+    progress = progressData || [];
+  }
+}
+---
+
+<section class="card" style="margin-bottom: var(--spacing-xl);">
+  <h2>Weekly Progress Tracking</h2>
+  {progress.length === 0 ? (
+    <p>No progress data found. Start by adding your first week's progress.</p>
+  ) : (
+    <div style="overflow-x:auto;">
+      <table class="progress-table">
+        <thead>
+          <tr>
+            <th>Week</th>
+            <th>Weight (kg)</th>
+            <th>Body Fat %</th>
+            <th>Waist (cm)</th>
+            <th>Neck (cm)</th>
+            <th>Arm (cm)</th>
+            <th>Thigh (cm)</th>
+            <th>Bench (kg)</th>
+            <th>Squat (kg)</th>
+            <th>Deadlift (kg)</th>
+            <th>Energy</th>
+            <th>Workout</th>
+            <th>Adherence %</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {progress.map((row: any) => (
+            <tr>
+              <td>{row.week_number}</td>
+              <td>{row.weight}</td>
+              <td>{row.bodyfat}</td>
+              <td>{row.waist}</td>
+              <td>{row.neck}</td>
+              <td>{row.arm}</td>
+              <td>{row.thigh}</td>
+              <td>{row.bench}</td>
+              <td>{row.squat}</td>
+              <td>{row.deadlift}</td>
+              <td>{row.energy}</td>
+              <td>{row.workout}</td>
+              <td>{row.adherence}</td>
+              <td>{row.notes}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
+
+<style>
+.progress-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.progress-table th, .progress-table td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+}
+.progress-table th {
+  background: var(--color-background);
+  font-weight: 600;
+}
+</style> 

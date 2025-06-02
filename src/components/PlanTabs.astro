@@ -1,0 +1,17 @@
+---
+import ProgressTracker from './ProgressTracker.astro';
+import MealPlan from './MealPlan.astro';
+import WorkoutSchedule from './WorkoutSchedule.astro';
+import ShoppingList from './ShoppingList.astro';
+import PlanOverview from './PlanOverview.astro';
+import Tabs from './Tabs.astro';
+const { tabs } = Astro.props;
+let activeTab = tabs[0].id;
+const setActiveTab = (id: string) => { activeTab = id; };
+---
+<Tabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
+{activeTab === 'progress' && <ProgressTracker />}
+{activeTab === 'meals' && <MealPlan />}
+{activeTab === 'workouts' && <WorkoutSchedule />}
+{activeTab === 'shopping' && <ShoppingList />}
+{activeTab === 'overview' && <PlanOverview />} 

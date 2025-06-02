@@ -1,14 +1,19 @@
 ---
 // src/components/Header.astro
-const { activePage = 'home' } = Astro.props;
+const { activePage = 'home', userRole = '' } = Astro.props;
 
 const navItems = [
   { id: 'home', label: 'Home', href: '/' },
+  { id: 'plan', label: 'Plan', href: '/plan' },
   { id: 'challenges', label: 'Challenges', href: '/challenges' },
   { id: 'tools', label: 'Tools', href: '/tools' },
   { id: 'leaderboard', label: 'Leaderboard', href: '/leaderboard' },
   { id: 'profile', label: 'Profile', href: '/profile' }
 ];
+
+if (userRole === 'admin') {
+  navItems.splice(1, 0, { id: 'plan', label: 'Plan', href: '/plan' }); // Insert after Home
+}
 ---
 
 <header class="site-header">

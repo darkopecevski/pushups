@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>9-Week Fat Loss Plan Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f7f7f7;
+            color: #222;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+            padding: 48px 32px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e6e6e6;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 16px;
+        }
+
+        .header p {
+            font-size: 1.125rem;
+            color: #717171;
+            margin-bottom: 8px;
+        }
+
+        .header .goal {
+            font-weight: 600;
+            color: #ff385c;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 32px 24px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .stat-card h3 {
+            color: #717171;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 4px;
+        }
+
+        .stat-unit {
+            color: #717171;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 16px;
+            padding: 8px;
+            margin-bottom: 32px;
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow-x: auto;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 16px 20px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            color: #717171;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+            font-weight: 600;
+            white-space: nowrap;
+            min-width: fit-content;
+        }
+
+        .tab:hover {
+            background: #f7f7f7;
+            color: #222;
+        }
+
+        .tab.active {
+            background: #ff385c;
+            color: white;
+            box-shadow: 0 2px 8px rgba(255, 56, 92, 0.3);
+        }
+
+        .tab-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .progress-week, .shopping-week {
+            margin-bottom: 32px;
+            padding: 32px;
+            background: #f7f7f7;
+            border-radius: 16px;
+            border: 1px solid #e6e6e6;
+        }
+
+        .week-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .week-title, .day-title {
+            font-size: 1.375rem;
+            font-weight: 600;
+            color: #222;
+        }
+
+        .week-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-upcoming {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-current {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .measurements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .measurement-input {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .measurement-input label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 8px;
+        }
+
+        .measurement-input input,
+        .measurement-input textarea,
+        .measurement-input select {
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .measurement-input input:focus,
+        .measurement-input textarea:focus,
+        .measurement-input select:focus {
+            outline: none;
+            border-color: #ff385c;
+            box-shadow: 0 0 0 3px rgba(255, 56, 92, 0.1);
+        }
+
+        .meal-plan, .workout-plan {
+            margin-bottom: 48px;
+        }
+
+        .meal-day, .workout-day {
+            margin-bottom: 32px;
+            padding: 32px;
+            background: #f7f7f7;
+            border-radius: 16px;
+            border: 1px solid #e6e6e6;
+        }
+
+        .meal, .exercise {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e6e6e6;
+        }
+
+        .meal-title, .exercise-name {
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+
+        .meal-content, .exercise-details {
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            color: #484848;
+        }
+
+        .macros {
+            margin-top: 12px;
+            padding: 12px 16px;
+            background: #f7f7f7;
+            border-radius: 8px;
+            font-size: 0.8125rem;
+            color: #717171;
+            font-weight: 500;
+        }
+
+        .exercise {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .save-btn {
+            background: #ff385c;
+            color: white;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+        }
+
+        .save-btn:hover {
+            background: #e61e4d;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4);
+        }
+
+        .save-btn:active {
+            transform: translateY(0);
+        }
+
+        .shopping-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e6e6e6;
+            transition: all 0.2s ease;
+        }
+
+        .shopping-item:hover {
+            background: #f7f7f7;
+            border-color: #d1d5db;
+        }
+
+        .shopping-item input[type="checkbox"] {
+            margin-right: 16px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #ff385c;
+        }
+
+        .shopping-item label {
+            cursor: pointer;
+            line-height: 1.5;
+            font-size: 0.9375rem;
+            color: #484848;
+        }
+
+        .shopping-category {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #e6e6e6;
+        }
+
+        .shopping-category h3 {
+            color: #222;
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+
+        .shopping-summary {
+            margin-top: 32px;
+            padding: 24px;
+            background: #f0f9ff;
+            border-radius: 12px;
+            border: 1px solid #bae6fd;
+        }
+
+        .shopping-summary h4 {
+            color: #0c4a6e;
+            margin-bottom: 12px;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .shopping-summary p {
+            color: #0369a1;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .shopping-summary ul {
+            color: #0369a1;
+            margin-left: 20px;
+            line-height: 1.6;
+        }
+
+        .progress-chart {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            border: 1px solid #e6e6e6;
+        }
+
+        h2 {
+            color: #222;
+            font-size: 1.875rem;
+            font-weight: 600;
+            margin-bottom: 32px;
+        }
+
+        h3 {
+            color: #222;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        h4 {
+            color: #222;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        p {
+            color: #484848;
+            margin-bottom: 16px;
+        }
+
+        strong {
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .header {
+                padding: 32px 24px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .measurements-grid {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 16px;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab {
+                flex: none;
+            }
+
+            .week-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .exercise {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .tab-content,
+            .progress-week,
+            .shopping-week,
+            .meal-day,
+            .workout-day {
+                padding: 24px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header h1 {
+                font-size: 1.75rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            .measurements-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tab-content,
+            .progress-week,
+            .shopping-week,
+            .meal-day,
+            .workout-day {
+                padding: 20px;
+            }
+        }
+
+        /* Airbnb-style hover effects */
+        .meal:hover,
+        .exercise:hover,
+        .shopping-category:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+        }
+
+        /* Custom scrollbar for tabs */
+        .tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tabs::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .tabs::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        .tabs::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Loading animation for buttons */
+        .save-btn.loading {
+            background: #a0a0a0;
+            cursor: not-allowed;
+        }
+
+        .save-btn.loading::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Success state */
+        .save-btn.success {
+            background: #059669;
+        }
+
+        /* Form validation styles */
+        .measurement-input input.error {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .measurement-input input.success {
+            border-color: #059669;
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏋️ 9-Week Fat Loss Plan</h1>
+            <p>Transform your body while maintaining muscle mass</p>
+            <p class="goal"><strong>Goal:</strong> 90kg → 78-80kg | <strong>Target:</strong> 10-12kg loss</p>
+        </div>
+
+        <div class="stats-overview">
+            <div class="stat-card">
+                <h3>Current Week</h3>
+                <div class="stat-value" id="currentWeek">1</div>
+                <div class="stat-unit">of 9</div>
+            </div>
+            <div class="stat-card">
+                <h3>Weight Lost</h3>
+                <div class="stat-value" id="weightLost">0</div>
+                <div class="stat-unit">kg</div>
+            </div>
+            <div class="stat-card">
+                <h3>Progress</h3>
+                <div class="stat-value" id="progressPercent">0</div>
+                <div class="stat-unit">%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Days Completed</h3>
+                <div class="stat-value" id="daysCompleted">0</div>
+                <div class="stat-unit">of 63</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('progress')">📊 Progress Tracking</button>
+            <button class="tab" onclick="showTab('meals')">🍽️ Meal Plan</button>
+            <button class="tab" onclick="showTab('workouts')">💪 Workouts</button>
+            <button class="tab" onclick="showTab('shopping')">🛒 Shopping List</button>
+            <button class="tab" onclick="showTab('overview')">📋 Plan Overview</button>
+        </div>
+
+        <div id="progress" class="tab-content active">
+            <h2>Weekly Progress Tracking</h2>
+            
+            <div class="progress-week">
+                <div class="week-header">
+                    <div class="week-title">Week 0 - Starting Measurements</div>
+                    <div class="week-status status-completed">Baseline</div>
+                </div>
+                <div class="measurements-grid">
+                    <div class="measurement-input">
+                        <label>Weight (kg)</label>
+                        <input type="number" id="week0-weight" value="90" step="0.1">
+                    </div>
+                    <div class="measurement-input">
+                        <label>Body Fat %</label>
+                        <input type="number" id="week0-bodyfat" step="0.1">
+                    </div>
+                    <div class="measurement-input">
+                        <label>Waist (cm)</label>
+                        <input type="number" id="week0-waist" step="0.1">
+                    </div>
+                    <div class="measurement-input">
+                        <label>Neck (cm)</label>
+                        <input type="number" id="week0-neck" step="0.1">
+                    </div>
+                    <div class="measurement-input">
+                        <label>Right Arm (cm)</label>
+                        <input type="number" id="week0-arm" step="0.1">
+                    </div>
+                    <div class="measurement-input">
+                        <label>Right Thigh (cm)</label>
+                        <input type="number" id="week0-thigh" step="0.1">
+                    </div>
+                </div>
+                <div class="measurements-grid">
+                    <div class="measurement-input">
+                        <label>Bench Press (kg)</label>
+                        <input type="number" id="week0-bench" value="90" step="2.5">
+                    </div>
+                    <div class="measurement-input">
+                        <label>Squat (kg)</label>
+                        <input type="number" id="week0-squat" value="70" step="2.5">
+                    </div>
+                    <div class="measurement-input">
+                        <label>Deadlift (kg)</label>
+                        <input type="number" id="week0-deadlift" value="70" step="2.5">
+                    </div>
+                </div>
+                <button class="save-btn" onclick="saveWeekData(0)">💾 Save Baseline</button>
+            </div>
+
+            <div id="weeklyProgress">
+                <!-- Weekly progress will be generated by JavaScript -->
+            </div>
+        </div>
+
+        <div id="meals" class="tab-content">
+            <h2>Daily Meal Plan</h2>
+            <p style="margin-bottom: 32px; color: #717171; font-size: 1.125rem;">
+                <strong>Eating Window:</strong> 12:00 PM - 8:00 PM (16h fast) | 
+                <strong>Daily Target:</strong> 2,100 calories | 190g protein | 123g carbs | 45g fat
+            </p>
+
+            <div class="meal-plan">
+                <div class="meal-day">
+                    <div class="day-title">📅 Monday & Thursday</div>
+                    
+                    <div class="meal">
+                        <div class="meal-title">🌅 Pre-Workout (7:15 AM)</div>
+                        <div class="meal-content">
+                            • Black coffee or green tea<br>
+                            • Optional: 10g BCAA if low energy
+                        </div>
+                    </div>
+
+                    <div class="meal">
+                        <div class="meal-title">💪 Post-Workout (8:30 AM)</div>
+                        <div class="meal-content">
+                            • Whey isolate protein: 30g<br>
+                            • Water: 500ml
+                        </div>
+                        <div class="macros">30g protein | 1g carbs | 0g fat | 124 calories</div>
+                    </div>
+
+                    <div class="meal">
+                        <div class="meal-title">🍳 Meal 1 - Eggs Breakfast (12:00 PM)</div>
+                        <div class="meal-content">
+                            • Whole eggs: 2 large<br>
+                            • Egg whites: 4 large<br>
+                            • Fresh spinach: 100g<br>
+                            • Mushrooms: 80g<br>
+                            • Olive oil (cooking): 5ml<br>
+                            • Oat bread: 1 slice (25g)
+                        </div>
+                        <div class="macros">34g protein | 19g carbs | 16g fat | 362 calories</div>
+                    </div>
+
+                    <div class="meal">
+                        <div class="meal-title">🥣 Meal 2 - Oats & Protein (3:00 PM)</div>
+                        <div class="meal-content">
+                            • Rolled oats (dry): 50g<br>
+                            • Whey isolate powder: 30g<br>
+                            • Mixed berries: 80g<br>
+                            • Almond butter: 8g<br>
+                            • Cinnamon: 1g
+                        </div>
+                        <div class="macros">33g protein | 46g carbs | 8g fat | 378 calories</div>
+                    </div>
+
+                    <div class="meal">
+                        <div class="meal-title">🍗 Meal 3 - Main Protein (5:30 PM)</div>
+                        <div class="meal-content">
+                            • Chicken breast: 150g<br>
+                            • Brown rice (dry): 35g<br>
+                            • Broccoli: 100g<br>
+                            • Bell pepper: 80g<br>
+                            • Olive oil: 5ml
+                        </div>
+                        <div class="macros">53g protein | 35g carbs | 9g fat | 430 calories</div>
+                    </div>
+
+                    <div class="meal">
+                        <div class="meal-title">🥗 Meal 4 - Light Dinner (7:30 PM)</div>
+                        <div class="meal-content">
+                            • Lean beef OR turkey breast: 120g<br>
+                            • Sweet potato: 60g<br>
+                            • Mixed green salad: 150g<br>
+                            • Avocado: 25g<br>
+                            • Lemon juice and herbs
+                        </div>
+                        <div class="macros">40g protein | 22g carbs | 12g fat | 346 calories</div>
+                    </div>
+                </div>
+
+                <div class="meal-day">
+                    <div class="day-title">🚫 Wednesday - 24h Fast Day</div>
+                    <div class="meal">
+                        <div class="meal-content" style="text-align: center; padding: 32px;">
+                            <strong>Tuesday 8:00 PM:</strong> Last meal<br>
+                            <strong>Wednesday all day:</strong> Water, black coffee, green tea, herbal teas ONLY<br>
+                            <strong>Thursday 12:00 PM:</strong> Break fast with Meal 1
+                        </div>
+                    </div>
+                </div>
+
+                <div class="meal-day">
+                    <div class="day-title">🔄 Tuesday & Friday Variations</div>
+                    <div class="meal">
+                        <div class="meal-content">
+                            <strong>Meal 1:</strong> Make omelet instead of scrambled eggs<br>
+                            <strong>Meal 2:</strong> Add 10g chopped walnuts, reduce almond butter to 5g<br>
+                            <strong>Meal 3:</strong> Replace chicken with turkey breast (150g)<br>
+                            <strong>Meal 4:</strong> Replace beef with chicken breast (120g)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="meal-day">
+                    <div class="day-title">🌟 Weekend Variations</div>
+                    <div class="meal">
+                        <div class="meal-content">
+                            <strong>Meal 1:</strong> Boiled eggs with spinach salad<br>
+                            <strong>Meal 2:</strong> Prepare as overnight oats with berries<br>
+                            <strong>Meal 3:</strong> Grill protein with roasted vegetables<br>
+                            <strong>Meal 4:</strong> Lighter portion - just salad with protein
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="workouts" class="tab-content">
+            <h2>Weekly Workout Schedule</h2>
+            <p style="margin-bottom: 32px; color: #717171;">
+                <strong>Schedule:</strong> Mon, Tue, Thu, Fri (40-50 min) | <strong>Time:</strong> 7:30 AM | 
+                <strong>Wednesday:</strong> Rest | <strong>Weekends:</strong> Outdoor activities
+            </p>
+
+            <div class="workout-day">
+                <div class="day-title">💪 Monday - Upper Body Power</div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Barbell Bench Press</div>
+                        <div class="exercise-details">Weeks 1-3: 75-80kg | 4 sets × 4-6 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Bent-Over Barbell Row</div>
+                        <div class="exercise-details">Weeks 1-3: 60-65kg | 4 sets × 4-6 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Overhead Press</div>
+                        <div class="exercise-details">Weeks 1-3: 45-50kg | 3 sets × 5-6 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Pull-ups/Assisted</div>
+                        <div class="exercise-details">Weeks 1-3: Bodyweight | 3 sets × 4-8 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Incline Dumbbell Press</div>
+                        <div class="exercise-details">Weeks 1-3: 25-28kg each | 3 sets × 6-8 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Barbell Curls</div>
+                        <div class="exercise-details">Weeks 1-3: 30-35kg | 3 sets × 6-8 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Close-Grip Bench Press</div>
+                        <div class="exercise-details">Weeks 1-3: 55-60kg | 3 sets × 6-8 reps</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workout-day">
+                <div class="day-title">🦵 Tuesday - Lower Body Foundation</div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Back Squats</div>
+                        <div class="exercise-details">Weeks 1-3: 55-60kg | 4 sets × 4-6 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Romanian Deadlifts</div>
+                        <div class="exercise-details">Weeks 1-3: 50-55kg | 4 sets × 6-8 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Bulgarian Split Squats</div>
+                        <div class="exercise-details">Weeks 1-3: 15-18kg each | 3 sets × 8-10 each</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Hip Thrusts</div>
+                        <div class="exercise-details">Weeks 1-3: 60-70kg | 3 sets × 10-12 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Leg Press</div>
+                        <div class="exercise-details">Weeks 1-3: 100-120kg | 3 sets × 10-12 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Calf Raises</div>
+                        <div class="exercise-details">Weeks 1-3: 80-90kg | 3 sets × 12-15 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Plank</div>
+                        <div class="exercise-details">Weeks 1-3: Bodyweight | 3 sets × 45-60s</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workout-day">
+                <div class="day-title">🚫 Wednesday - Rest Day</div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Complete Rest or Light Activity</div>
+                        <div class="exercise-details">24h Fast Day | Optional: 20-minute walk, yoga, stretching</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">10km Biking</div>
+                        <div class="exercise-details">Continue daily biking routine at light pace</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workout-day">
+                <div class="day-title">💪 Thursday - Upper Body Volume</div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Incline Barbell Press</div>
+                        <div class="exercise-details">Weeks 1-3: 65-70kg | 4 sets × 4-6 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Seated Cable Row</div>
+                        <div class="exercise-details">Weeks 1-3: 70-75kg | 4 sets × 5-6 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Dumbbell Shoulder Press</div>
+                        <div class="exercise-details">Weeks 1-3: 20-22kg each | 3 sets × 6-8 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Wide-Grip Pulldowns</div>
+                        <div class="exercise-details">Weeks 1-3: 60-65kg | 3 sets × 6-8 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Decline Bench Press</div>
+                        <div class="exercise-details">Weeks 1-3: 60-65kg | 3 sets × 6-8 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Preacher Curls</div>
+                        <div class="exercise-details">Weeks 1-3: 25-30kg | 3 sets × 8-10 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Skull Crushers</div>
+                        <div class="exercise-details">Weeks 1-3: 30-35kg | 3 sets × 8-10 reps</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workout-day">
+                <div class="day-title">🦵 Friday - Lower Body Power</div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Conventional Deadlifts</div>
+                        <div class="exercise-details">Weeks 1-3: 55-60kg | 4 sets × 5-6 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Front Squats</div>
+                        <div class="exercise-details">Weeks 1-3: 45-50kg | 4 sets × 6-8 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Single-Leg Romanian Deadlifts</div>
+                        <div class="exercise-details">Weeks 1-3: 15-18kg each | 3 sets × 8-10 each</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Leg Press</div>
+                        <div class="exercise-details">Weeks 1-3: 120-140kg | 3 sets × 10-12 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Leg Curls</div>
+                        <div class="exercise-details">Weeks 1-3: 30-35kg | 3 sets × 10-12 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Seated Calf Raises</div>
+                        <div class="exercise-details">Weeks 1-3: 50-60kg | 3 sets × 12-15 reps</div>
+                    </div>
+                </div>
+                <div class="exercise">
+                    <div>
+                        <div class="exercise-name">Dead Bug</div>
+                        <div class="exercise-details">Weeks 1-3: Bodyweight | 3 sets × 10 each side</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="shopping" class="tab-content">
+            <h2>Weekly Shopping List</h2>
+            <p style="margin-bottom: 32px; color: #717171; font-size: 1.125rem;">
+                <strong>Plan ahead:</strong> Shop weekly for fresh ingredients | 
+                <strong>Prep tip:</strong> Buy proteins in bulk and freeze portions
+            </p>
+
+            <div class="shopping-week">
+                <div class="day-title">🛒 Weekly Shopping List - Standard Week</div>
+                <p style="margin-bottom: 24px; color: #717171;">This covers Monday, Tuesday, Thursday, Friday meals + one weekend day</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                    <div class="shopping-category">
+                        <h3>🥩 Proteins</h3>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="chicken-breast">
+                            <label for="chicken-breast"><strong>Chicken breast:</strong> 1.2kg (150g × 4 days + 200g × 2 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="turkey-breast">
+                            <label for="turkey-breast"><strong>Turkey breast:</strong> 500g (250g × 2 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="lean-beef">
+                            <label for="lean-beef"><strong>Lean beef/sirloin:</strong> 600g (120g × 5 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="whole-eggs">
+                            <label for="whole-eggs"><strong>Large eggs:</strong> 18 count (2 whole × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="egg-whites">
+                            <label for="egg-whites"><strong>Liquid egg whites:</strong> 1 liter (4 whites × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="whey-protein">
+                            <label for="whey-protein"><strong>Whey isolate protein:</strong> 1 container (3 scoops daily)</label>
+                        </div>
+                    </div>
+
+                    <div class="shopping-category">
+                        <h3>🌾 Carbohydrates</h3>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="rolled-oats">
+                            <label for="rolled-oats"><strong>Rolled oats:</strong> 1kg bag (50g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="brown-rice">
+                            <label for="brown-rice"><strong>Brown rice (dry):</strong> 1kg bag (35g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="basmati-rice">
+                            <label for="basmati-rice"><strong>Basmati rice (dry):</strong> 500g (backup option)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="sweet-potato">
+                            <label for="sweet-potato"><strong>Sweet potatoes:</strong> 1kg (60g × 4 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="oat-bread">
+                            <label for="oat-bread"><strong>Whole grain/oat bread:</strong> 1 loaf (1 slice × 6 days)</label>
+                        </div>
+                    </div>
+
+                    <div class="shopping-category">
+                        <h3>🥬 Vegetables</h3>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="fresh-spinach">
+                            <label for="fresh-spinach"><strong>Fresh spinach:</strong> 2 large bags (100g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="broccoli">
+                            <label for="broccoli"><strong>Fresh broccoli:</strong> 1kg (100g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="mushrooms">
+                            <label for="mushrooms"><strong>Button mushrooms:</strong> 500g (80g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bell-peppers">
+                            <label for="bell-peppers"><strong>Bell peppers (mixed colors):</strong> 6 pieces (80g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="mixed-salad">
+                            <label for="mixed-salad"><strong>Mixed salad greens:</strong> 2 large bags (150g × 4 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="cucumber">
+                            <label for="cucumber"><strong>Cucumbers:</strong> 3 large (for salads)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="tomatoes">
+                            <label for="tomatoes"><strong>Cherry tomatoes:</strong> 1 container (for salads)</label>
+                        </div>
+                    </div>
+
+                    <div class="shopping-category">
+                        <h3>🥑 Healthy Fats</h3>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="avocados">
+                            <label for="avocados"><strong>Avocados:</strong> 4 medium (25g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="olive-oil">
+                            <label for="olive-oil"><strong>Extra virgin olive oil:</strong> 500ml bottle</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="almond-butter">
+                            <label for="almond-butter"><strong>Natural almond butter:</strong> 1 jar (8g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="walnuts">
+                            <label for="walnuts"><strong>Raw walnuts:</strong> 200g bag (for Tuesday/Friday)</label>
+                        </div>
+                    </div>
+
+                    <div class="shopping-category">
+                        <h3>🫐 Fruits & Berries</h3>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="mixed-berries">
+                            <label for="mixed-berries"><strong>Mixed berries (fresh/frozen):</strong> 500g (80g × 6 days)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="blueberries">
+                            <label for="blueberries"><strong>Blueberries:</strong> 300g container</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="raspberries">
+                            <label for="raspberries"><strong>Raspberries:</strong> 200g container</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="lemons">
+                            <label for="lemons"><strong>Fresh lemons:</strong> 4 pieces (for dressing)</label>
+                        </div>
+                    </div>
+
+                    <div class="shopping-category">
+                        <h3>🧂 Seasonings & Extras</h3>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="himalayan-salt">
+                            <label for="himalayan-salt"><strong>Himalayan pink salt:</strong> 1 container</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="black-pepper">
+                            <label for="black-pepper"><strong>Fresh ground black pepper:</strong> 1 container</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="cinnamon">
+                            <label for="cinnamon"><strong>Ground cinnamon:</strong> 1 container</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="garlic">
+                            <label for="garlic"><strong>Fresh garlic:</strong> 1 bulb</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="fresh-herbs">
+                            <label for="fresh-herbs"><strong>Fresh herbs (parsley, basil):</strong> 2 packs</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="green-tea">
+                            <label for="green-tea"><strong>Green tea bags:</strong> 1 box</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="coffee">
+                            <label for="coffee"><strong>Black coffee:</strong> your preferred brand</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shopping-summary">
+                    <h4>💰 Estimated Weekly Cost: $80-120 (varies by location)</h4>
+                    <p><strong>Money-saving tips:</strong></p>
+                    <ul>
+                        <li>Buy proteins in bulk and freeze in daily portions</li>
+                        <li>Choose frozen berries when fresh is expensive</li>
+                        <li>Buy oats and rice in larger quantities</li>
+                        <li>Shop sales for seasonal vegetables</li>
+                        <li>Consider generic brands for basic ingredients</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="shopping-week">
+                <div class="day-title">📦 Bulk Prep Shopping (Monthly)</div>
+                <p style="margin-bottom: 24px; color: #717171;">Stock up on these items monthly to save time and money</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                    <div class="shopping-category">
+                        <h3>🥫 Pantry Staples</h3>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bulk-oats">
+                            <label for="bulk-oats"><strong>Rolled oats:</strong> 5kg bag (lasts ~6 weeks)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bulk-rice">
+                            <label for="bulk-rice"><strong>Brown rice:</strong> 5kg bag (lasts ~8 weeks)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bulk-protein">
+                            <label for="bulk-protein"><strong>Whey isolate:</strong> 2kg container (lasts ~4 weeks)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bulk-oil">
+                            <label for="bulk-oil"><strong>Olive oil:</strong> 1L bottle (lasts ~2 months)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bulk-almond-butter">
+                            <label for="bulk-almond-butter"><strong>Almond butter:</strong> Large jar (lasts ~3 weeks)</label>
+                        </div>
+                    </div>
+
+                    <div class="shopping-category">
+                        <h3>🧊 Freezer Stock</h3>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bulk-chicken">
+                            <label for="bulk-chicken"><strong>Chicken breast:</strong> 3kg family pack (freeze in 150g portions)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bulk-beef">
+                            <label for="bulk-beef"><strong>Lean ground beef:</strong> 2kg (freeze in 120g portions)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="bulk-turkey">
+                            <label for="bulk-turkey"><strong>Turkey breast:</strong> 1.5kg (freeze in 200g portions)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="frozen-berries">
+                            <label for="frozen-berries"><strong>Frozen mixed berries:</strong> 2kg bag (lasts ~1 month)</label>
+                        </div>
+                        <div class="shopping-item">
+                            <input type="checkbox" id="frozen-broccoli">
+                            <label for="frozen-broccoli"><strong>Frozen broccoli:</strong> 1kg bag (backup option)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="shopping-week">
+                <div class="day-title">📝 Smart Shopping Tips</div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                    <div class="shopping-category">
+                        <h3>🕐 Shopping Schedule</h3>
+                        <div class="meal">
+                            <div class="meal-content">
+                                <strong>Sunday morning:</strong> Main weekly shop<br>
+                                <strong>Wednesday evening:</strong> Fresh vegetables restock<br>
+                                <strong>Saturday:</strong> Weekend meal prep ingredients<br><br>
+                                <strong>Best times to shop:</strong><br>
+                                • Early morning (7-9 AM) for freshest produce<br>
+                                • Late evening (8-9 PM) for markdowns<br>
+                                • Weekdays to avoid crowds
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="shopping-category">
+                        <h3>💡 Meal Prep Strategy</h3>
+                        <div class="meal">
+                            <div class="meal-content">
+                                <strong>Sunday prep (2-3 hours):</strong><br>
+                                • Cook all rice for the week<br>
+                                • Grill/bake all chicken and beef<br>
+                                • Wash and cut all vegetables<br>
+                                • Portion proteins into containers<br>
+                                • Hard boil eggs for quick meals<br><br>
+                                <strong>Wednesday mini-prep (30 min):</strong><br>
+                                • Restock fresh vegetables<br>
+                                • Prepare overnight oats<br>
+                                • Check protein portions
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="shopping-category">
+                        <h3>🏪 Store Strategy</h3>
+                        <div class="meal">
+                            <div class="meal-content">
+                                <strong>Primary store (80% of shopping):</strong><br>
+                                • Large supermarket for bulk items<br>
+                                • Best prices on proteins and staples<br><br>
+                                <strong>Specialty stores (20%):</strong><br>
+                                • Butcher for fresh, quality meats<br>
+                                • Farmer's market for fresh vegetables<br>
+                                • Health food store for specialty proteins<br><br>
+                                <strong>Online options:</strong><br>
+                                • Bulk dry goods (oats, rice)<br>
+                                • Protein powder subscriptions<br>
+                                • Non-perishable pantry items
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="shopping-week">
+                <div class="day-title">📱 Shopping List Generator</div>
+                <div style="background: #f7f7f7; padding: 24px; border-radius: 12px; border: 1px solid #e6e6e6;">
+                    <h4 style="margin-bottom: 20px; color: #222;">Generate Custom Shopping List</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        <div class="measurement-input">
+                            <label>Number of people:</label>
+                            <select id="people-count">
+                                <option value="1">1 person</option>
+                                <option value="2">2 people</option>
+                                <option value="3">3 people</option>
+                                <option value="4">4 people</option>
+                            </select>
+                        </div>
+                        <div class="measurement-input">
+                            <label>Weeks to shop for:</label>
+                            <select id="weeks-count">
+                                <option value="1">1 week</option>
+                                <option value="2">2 weeks</option>
+                                <option value="3">3 weeks</option>
+                                <option value="4">4 weeks</option>
+                            </select>
+                        </div>
+                        <div class="measurement-input">
+                            <label>Protein preference:</label>
+                            <select id="protein-pref">
+                                <option value="mixed">Mixed proteins</option>
+                                <option value="chicken">Mainly chicken</option>
+                                <option value="beef">Mainly beef</option>
+                                <option value="turkey">Mainly turkey</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="save-btn" onclick="generateCustomList()">🛒 Generate Custom List</button>
+                    <div id="custom-shopping-list" style="margin-top: 24px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="overview" class="tab-content">
+            <h2>Plan Overview & Guidelines</h2>
+            
+            <div class="meal-day">
+                <div class="day-title">🎯 Key Success Factors</div>
+                <div class="meal">
+                    <div class="meal-content">
+                        <strong>1. Consistency is Everything:</strong> Never miss meals or workouts without valid reason<br>
+                        <strong>2. Egg-Based Breakfast:</strong> Provides sustained energy for fasted training<br>
+                        <strong>3. Oats + Whey Combination:</strong> Perfect muscle-building meal<br>
+                        <strong>4. Progressive Overload:</strong> Building from your current strength levels<br>
+                        <strong>5. Adequate Cardio:</strong> Your 10km biking is perfect - don't overdo it<br>
+                        <strong>6. Recovery Focus:</strong> Sleep, hydration, stress management<br>
+                        <strong>7. Meal Timing:</strong> 16h fasting window helps accelerate fat loss
+                    </div>
+                </div>
+            </div>
+
+            <div class="meal-day">
+                <div class="day-title">📊 Expected Results Timeline</div>
+                <div class="meal">
+                    <div class="meal-content">
+                        <strong>Week 1:</strong> -2.0kg (includes water weight) | Adjustment period<br>
+                        <strong>Week 2:</strong> -1.5kg | Energy improving<br>
+                        <strong>Week 3:</strong> -1.0kg | Noticeable strength improvement<br>
+                        <strong>Week 4:</strong> -1.0kg | Clear strength gains<br>
+                        <strong>Week 5:</strong> -1.0kg | Peak performance period<br>
+                        <strong>Week 6:</strong> -1.5kg | Maintaining very well<br>
+                        <strong>Week 7:</strong> -1.0kg | Metabolic training phase<br>
+                        <strong>Week 8:</strong> -1.0kg | Endurance improving<br>
+                        <strong>Week 9:</strong> -1.0kg | Final push to goal<br><br>
+                        <strong>Total Expected:</strong> 10-11kg weight loss | 4-5% body fat reduction
+                    </div>
+                </div>
+            </div>
+
+            <div class="meal-day">
+                <div class="day-title">🚨 Critical Rules</div>
+                <div class="meal">
+                    <div class="meal-content">
+                        <strong>✅ DO:</strong><br>
+                        • Drink 3.5-4 liters of water daily<br>
+                        • Sleep 2-3 hours after last meal<br>
+                        • Take progress photos weekly<br>
+                        • Measure at same time each week<br>
+                        • Continue 10km daily biking<br><br>
+                        <strong>❌ DON'T:</strong><br>
+                        • Skip any meals during eating window<br>
+                        • Drink alcohol for the full 9 weeks<br>
+                        • Have cheat meals<br>
+                        • Substitute proteins for carbs or vice versa<br>
+                        • Add extra cardio (your biking is enough)
+                    </div>
+                </div>
+            </div>
+
+            <div class="meal-day">
+                <div class="day-title">🔄 Adjustment Protocols</div>
+                <div class="meal">
+                    <div class="meal-content">
+                        <strong>If weight loss stalls (week 5+):</strong> Reduce carbs by 20g or add 2k steps<br>
+                        <strong>If strength drops significantly:</strong> Increase calories by 100-150 for 3 days<br>
+                        <strong>If fatigue increases:</strong> Take extra rest day or reduce cardio intensity<br>
+                        <strong>If hunger is overwhelming:</strong> Add 100g vegetables to any meal<br>
+                        <strong>If workout performance suffers:</strong> Consider 5g creatine daily
+                    </div>
+                </div>
+            </div>
+
+            <div class="meal-day">
+                <div class="day-title">📱 Daily Activity Targets</div>
+                <div class="meal">
+                    <div class="meal-content">
+                        <strong>Monday/Tuesday/Thursday/Friday:</strong> 6,000 steps + gym + 10km biking<br>
+                        <strong>Wednesday:</strong> 8,000 steps + 10km biking (rest day)<br>
+                        <strong>Saturday/Sunday:</strong> 10,000 steps + 10km biking + outdoor activities<br><br>
+                        <strong>Weekly Total:</strong> ~47,000 steps + 70km biking + 4 gym sessions
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab functionality
+        function showTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Generate weekly progress tracking
+        function generateWeeklyProgress() {
+            const container = document.getElementById('weeklyProgress');
+            const expectedLoss = [2.0, 1.5, 1.0, 1.0, 1.0, 1.5, 1.0, 1.0, 1.0];
+            const phases = [
+                "Strength Foundation", "Strength Foundation", "Strength Foundation",
+                "Strength Building", "Strength Building", "Strength Building", 
+                "Metabolic Strength", "Metabolic Strength", "Metabolic Strength"
+            ];
+
+            for (let week = 1; week <= 9; week++) {
+                const weekDiv = document.createElement('div');
+                weekDiv.className = 'progress-week';
+                weekDiv.innerHTML = `
+                    <div class="week-header">
+                        <div class="week-title">Week ${week} - ${phases[week-1]}</div>
+                        <div class="week-status status-upcoming">Expected: -${expectedLoss[week-1]}kg</div>
+                    </div>
+                    <div class="measurements-grid">
+                        <div class="measurement-input">
+                            <label>Weight (kg)</label>
+                            <input type="number" id="week${week}-weight" step="0.1" placeholder="Enter weight">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Body Fat %</label>
+                            <input type="number" id="week${week}-bodyfat" step="0.1" placeholder="Enter %">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Waist (cm)</label>
+                            <input type="number" id="week${week}-waist" step="0.1" placeholder="Measure">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Neck (cm)</label>
+                            <input type="number" id="week${week}-neck" step="0.1" placeholder="Measure">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Right Arm (cm)</label>
+                            <input type="number" id="week${week}-arm" step="0.1" placeholder="Flexed">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Right Thigh (cm)</label>
+                            <input type="number" id="week${week}-thigh" step="0.1" placeholder="Relaxed">
+                        </div>
+                    </div>
+                    <div class="measurements-grid">
+                        <div class="measurement-input">
+                            <label>Bench Press (kg)</label>
+                            <input type="number" id="week${week}-bench" step="2.5" placeholder="Best set">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Squat (kg)</label>
+                            <input type="number" id="week${week}-squat" step="2.5" placeholder="Best set">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Deadlift (kg)</label>
+                            <input type="number" id="week${week}-deadlift" step="2.5" placeholder="Best set">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Energy Level (1-10)</label>
+                            <input type="number" id="week${week}-energy" min="1" max="10" placeholder="Rate 1-10">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Workout Quality (1-10)</label>
+                            <input type="number" id="week${week}-workout" min="1" max="10" placeholder="Rate 1-10">
+                        </div>
+                        <div class="measurement-input">
+                            <label>Adherence % (0-100)</label>
+                            <input type="number" id="week${week}-adherence" min="0" max="100" placeholder="Diet/workout %">
+                        </div>
+                    </div>
+                    <div class="measurement-input" style="margin-top: 20px;">
+                        <label>Weekly Notes</label>
+                        <textarea id="week${week}-notes" placeholder="How did this week go? Any challenges or victories?" style="min-height: 80px; resize: vertical;"></textarea>
+                    </div>
+                    <button class="save-btn" onclick="saveWeekData(${week})">💾 Save Week ${week}</button>
+                `;
+                container.appendChild(weekDiv);
+            }
+        }
+
+        // Save week data to localStorage
+        function saveWeekData(week) {
+            const data = {};
+            const fields = ['weight', 'bodyfat', 'waist', 'neck', 'arm', 'thigh', 'bench', 'squat', 'deadlift', 'energy', 'workout', 'adherence', 'notes'];
+            
+            fields.forEach(field => {
+                const element = document.getElementById(`week${week}-${field}`);
+                if (element) {
+                    data[field] = element.value;
+                }
+            });
+            
+            localStorage.setItem(`week${week}Data`, JSON.stringify(data));
+            
+            // Update overview stats
+            updateOverviewStats();
+            
+            // Show success message with enhanced animation
+            const button = event.target;
+            const originalText = button.textContent;
+            const originalClass = button.className;
+            
+            button.textContent = '✅ Saved!';
+            button.className += ' success';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.className = originalClass;
+            }, 2000);
+        }
+
+        // Load saved data
+        function loadSavedData() {
+            for (let week = 0; week <= 9; week++) {
+                const savedData = localStorage.getItem(`week${week}Data`);
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    Object.keys(data).forEach(field => {
+                        const element = document.getElementById(`week${week}-${field}`);
+                        if (element && data[field]) {
+                            element.value = data[field];
+                        }
+                    });
+                }
+            }
+        }
+
+        // Update overview statistics
+        function updateOverviewStats() {
+            const startWeight = parseFloat(document.getElementById('week0-weight').value) || 90;
+            let currentWeek = 1;
+            let latestWeight = startWeight;
+            let completedWeeks = 0;
+
+            // Find latest completed week
+            for (let week = 1; week <= 9; week++) {
+                const weight = document.getElementById(`week${week}-weight`).value;
+                if (weight) {
+                    latestWeight = parseFloat(weight);
+                    currentWeek = week + 1;
+                    completedWeeks = week;
+                }
+            }
+
+            // Update stats
+            const weightLost = startWeight - latestWeight;
+            const progressPercent = Math.round((weightLost / 12) * 100); // Assuming 12kg target
+            const daysCompleted = completedWeeks * 7;
+
+            document.getElementById('currentWeek').textContent = Math.min(currentWeek, 9);
+            document.getElementById('weightLost').textContent = weightLost.toFixed(1);
+            document.getElementById('progressPercent').textContent = Math.max(0, progressPercent);
+            document.getElementById('daysCompleted').textContent = Math.min(daysCompleted, 63);
+        }
+
+        // Generate custom shopping list
+        function generateCustomList() {
+            const people = parseInt(document.getElementById('people-count').value);
+            const weeks = parseInt(document.getElementById('weeks-count').value);
+            const proteinPref = document.getElementById('protein-pref').value;
+            
+            const baseAmounts = {
+                'chicken-breast': 1.2,
+                'turkey-breast': 0.5,
+                'lean-beef': 0.6,
+                'whole-eggs': 18,
+                'rolled-oats': 0.35,
+                'brown-rice': 0.25,
+                'sweet-potato': 0.4,
+                'fresh-spinach': 0.6,
+                'broccoli': 0.6,
+                'mixed-berries': 0.5,
+                'avocados': 4,
+                'olive-oil': 0.1
+            };
+
+            let customList = '<h4 style="color: #222; margin-bottom: 16px;">Custom Shopping List</h4>';
+            customList += `<p style="margin-bottom: 16px; color: #717171;"><strong>For:</strong> ${people} ${people === 1 ? 'person' : 'people'} × ${weeks} ${weeks === 1 ? 'week' : 'weeks'}</p>`;
+            customList += '<div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e6e6e6;">';
+
+            Object.keys(baseAmounts).forEach(item => {
+                const amount = baseAmounts[item] * people * weeks;
+                const unit = item.includes('eggs') ? 'count' : 'kg';
+                const displayAmount = item.includes('eggs') ? Math.ceil(amount) : amount.toFixed(1);
+                
+                customList += `<div style="margin-bottom: 8px; color: #484848;">• <strong>${item.replace('-', ' ')}:</strong> ${displayAmount}${unit}</div>`;
+            });
+
+            customList += '</div>';
+            customList += '<button class="save-btn" onclick="printShoppingList()" style="margin-top: 16px;">🖨️ Print List</button>';
+            
+            document.getElementById('custom-shopping-list').innerHTML = customList;
+        }
+
+        function printShoppingList() {
+            const customList = document.getElementById('custom-shopping-list').innerHTML;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Shopping List</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }
+                        h1 { color: #222; }
+                        button { display: none; }
+                    </style>
+                </head>
+                <body>
+                    <h1>9-Week Fat Loss Plan - Shopping List</h1>
+                    ${customList}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // Export data functionality
+        function exportData() {
+            const allData = {};
+            for (let week = 0; week <= 9; week++) {
+                const savedData = localStorage.getItem(`week${week}Data`);
+                if (savedData) {
+                    allData[`week${week}`] = JSON.parse(savedData);
+                }
+            }
+            
+            const dataStr = JSON.stringify(allData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'fat-loss-progress.json';
+            link.click();
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            generateWeeklyProgress();
+            loadSavedData();
+            updateOverviewStats();
+            
+            // Add export button to header
+            const header = document.querySelector('.header');
+            const exportBtn = document.createElement('button');
+            exportBtn.textContent = '📊 Export Progress';
+            exportBtn.className = 'save-btn';
+            exportBtn.style.marginTop = '16px';
+            exportBtn.onclick = exportData;
+            header.appendChild(exportBtn);
+        });
+
+        // Auto-save functionality with debouncing
+        let autoSaveTimeout;
+        document.addEventListener('input', function(e) {
+            if (e.target.type === 'number' || e.target.tagName === 'TEXTAREA') {
+                // Add visual feedback
+                e.target.classList.remove('success', 'error');
+                
+                // Validate input
+                if (e.target.type === 'number' && e.target.value !== '') {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value) || value < 0) {
+                        e.target.classList.add('error');
+                    } else {
+                        e.target.classList.add('success');
+                    }
+                }
+                
+                // Auto-save after 2 seconds of no input
+                clearTimeout(autoSaveTimeout);
+                autoSaveTimeout = setTimeout(() => {
+                    const weekMatch = e.target.id.match(/week(\d+)-/);
+                    if (weekMatch) {
+                        const week = parseInt(weekMatch[1]);
+                        saveWeekData(week);
+                    }
+                }, 2000);
+            }
+        });
+
+        // Enhanced shopping list interactions
+        document.addEventListener('change', function(e) {
+            if (e.target.type === 'checkbox' && e.target.id) {
+                const item = e.target.closest('.shopping-item');
+                if (e.target.checked) {
+                    item.style.background = '#f0f9ff';
+                    item.style.borderColor = '#0ea5e9';
+                } else {
+                    item.style.background = 'white';
+                    item.style.borderColor = '#e6e6e6';
+                }
+                
+                // Save shopping list state
+                const shoppingState = JSON.parse(localStorage.getItem('shoppingListState') || '{}');
+                shoppingState[e.target.id] = e.target.checked;
+                localStorage.setItem('shoppingListState', JSON.stringify(shoppingState));
+            }
+        });
+
+        // Load shopping list state
+        window.addEventListener('load', function() {
+            const shoppingState = JSON.parse(localStorage.getItem('shoppingListState') || '{}');
+            Object.keys(shoppingState).forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) {
+                    checkbox.checked = shoppingState[id];
+                    const item = checkbox.closest('.shopping-item');
+                    if (checkbox.checked) {
+                        item.style.background = '#f0f9ff';
+                        item.style.borderColor = '#0ea5e9';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

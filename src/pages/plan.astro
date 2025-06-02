@@ -1,0 +1,98 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import PlanTabs from '../components/PlanTabs.jsx';
+import { supabase } from '../lib/supabase';
+
+const { cookies, redirect } = Astro;
+const accessToken = cookies.get('sb-access-token');
+const refreshToken = cookies.get('sb-refresh-token');
+
+let user = null;
+let profile = null;
+
+if (accessToken && refreshToken) {
+  const { data } = await supabase.auth.setSession({
+    access_token: accessToken.value,
+    refresh_token: refreshToken.value
+  });
+  user = data?.user;
+  if (user) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    profile = profileData;
+  }
+}
+
+if (!user) {
+  return redirect('/auth');
+}
+
+const tabs = [
+  { id: 'progress', label: 'Progress Tracking' },
+  { id: 'meals', label: 'Meal Plan' },
+  { id: 'workouts', label: 'Workouts' },
+  { id: 'shopping', label: 'Shopping List' },
+  { id: 'overview', label: 'Plan Overview' }
+];
+---
+
+<Layout title="Plan - FitChallenge">
+  <Header activePage="plan" />
+  <main>
+    <div class="container plan-container-padded">
+      <section class="page-header plan-header-spaced">
+        <h1>My 9-Week Fat Loss Plan</h1>
+        <p class="subtitle">Track your progress, meals, workouts, and more</p>
+      </section>
+      <div class="plan-tabs-spaced">
+        <PlanTabs client:load tabs={tabs} user={user} profile={profile} />
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .plan-header-spaced {
+    margin-top: var(--spacing-2xl, 3rem);
+    margin-bottom: var(--spacing-xl, 2rem);
+    text-align: center;
+  }
+  .plan-header-spaced h1 {
+    margin-bottom: 0.5rem;
+  }
+  .plan-header-spaced .subtitle {
+    margin-bottom: 0;
+    color: #717171;
+  }
+  .plan-tabs-spaced {
+    margin-bottom: var(--spacing-xl, 2rem);
+    margin-top: var(--spacing-lg, 1.5rem);
+  }
+  @media (max-width: 600px) {
+    .plan-header-spaced {
+      margin-top: var(--spacing-lg, 1.5rem);
+      margin-bottom: var(--spacing-lg, 1.5rem);
+    }
+    .plan-tabs-spaced {
+      margin-top: var(--spacing-md, 1rem);
+      margin-bottom: var(--spacing-md, 1rem);
+    }
+  }
+  .plan-container-padded {
+    padding: 2.5rem 2rem;
+  }
+  @media (max-width: 900px) {
+    .plan-container-padded {
+      padding: 1.5rem 1rem;
+    }
+  }
+  @media (max-width: 600px) {
+    .plan-container-padded {
+      padding: 1rem 0.5rem;
+    }
+  }
+</style> 

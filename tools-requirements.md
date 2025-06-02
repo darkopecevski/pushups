@@ -1,4 +1,4 @@
-# Universal timer / stopwatch for tracking time during workouts
+# Weight tracker
 
 Here are the functionalities that the timer needs to have:
 
