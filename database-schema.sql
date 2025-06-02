@@ -96,6 +96,28 @@ CREATE TABLE public.fasting_sessions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Weekly Progress Table
+CREATE TABLE public.weekly_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  week_number INTEGER NOT NULL,
+  weight NUMERIC(5,2),
+  bodyfat NUMERIC(4,1),
+  waist NUMERIC(5,2),
+  neck NUMERIC(5,2),
+  arm NUMERIC(5,2),
+  thigh NUMERIC(5,2),
+  bench NUMERIC(5,2),
+  squat NUMERIC(5,2),
+  deadlift NUMERIC(5,2),
+  energy INTEGER,
+  workout INTEGER,
+  adherence INTEGER,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_challenge_participants_user_id ON public.challenge_participants(user_id);
 CREATE INDEX idx_challenge_participants_challenge_id ON public.challenge_participants(challenge_id);
@@ -109,6 +131,8 @@ CREATE INDEX idx_water_intake_presets_user_id ON public.water_intake_presets(use
 CREATE INDEX idx_fasting_settings_user_id ON public.fasting_settings(user_id);
 CREATE INDEX idx_fasting_sessions_user_id ON public.fasting_sessions(user_id);
 CREATE INDEX idx_fasting_sessions_start_time ON public.fasting_sessions(start_time);
+CREATE INDEX idx_weekly_progress_user_id ON public.weekly_progress(user_id);
+CREATE INDEX idx_weekly_progress_week_number ON public.weekly_progress(week_number);
 
 -- Add RLS (Row Level Security) policies
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -120,6 +144,7 @@ ALTER TABLE public.water_intake_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.water_intake_presets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fasting_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fasting_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.weekly_progress ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Public profiles are viewable by everyone"
@@ -268,6 +293,12 @@ CREATE POLICY "Users can update their own fasting sessions"
 CREATE POLICY "Users can delete their own fasting sessions"
   ON public.fasting_sessions FOR DELETE
   USING (auth.uid() = user_id);
+
+-- Weekly progress policies
+CREATE POLICY "Users can view their own weekly progress" ON public.weekly_progress FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own weekly progress" ON public.weekly_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own weekly progress" ON public.weekly_progress FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own weekly progress" ON public.weekly_progress FOR DELETE USING (auth.uid() = user_id);
 
 -- Get current streak function
 CREATE OR REPLACE FUNCTION public.get_current_streak(p_user_id UUID, p_challenge_id UUID)

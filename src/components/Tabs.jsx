@@ -1,0 +1,54 @@
+import React from 'react';
+
+const Tabs = ({ tabs = [], activeTab = '', setActiveTab }) => (
+  <div className="tabs" style={{ marginBottom: 'var(--spacing-lg)' }}>
+    {tabs.map(tab => (
+      <button
+        key={tab.id}
+        className={`tab${activeTab === tab.id ? ' active' : ''}`}
+        type="button"
+        onClick={() => setActiveTab(tab.id)}
+      >
+        {tab.label}
+      </button>
+    ))}
+    <style jsx>{`
+      .tabs {
+        display: flex;
+        background: var(--color-white);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xs);
+        margin-bottom: var(--spacing-lg);
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow-sm);
+        overflow-x: auto;
+      }
+      .tab {
+        flex: 1;
+        padding: var(--spacing-md) var(--spacing-lg);
+        text-align: center;
+        background: transparent;
+        border: none;
+        color: var(--color-text-light);
+        cursor: pointer;
+        border-radius: var(--radius-md);
+        transition: all 0.2s;
+        font-size: 0.95rem;
+        font-weight: 600;
+        white-space: nowrap;
+        min-width: fit-content;
+      }
+      .tab:hover {
+        background: var(--color-background);
+        color: var(--color-text);
+      }
+      .tab.active {
+        background: var(--color-primary);
+        color: var(--color-white);
+        box-shadow: var(--shadow-sm);
+      }
+    `}</style>
+  </div>
+);
+
+export default Tabs; 
